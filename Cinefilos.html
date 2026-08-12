@@ -234,14 +234,22 @@ main{padding:0 0 90px}
 .grid{display:grid;gap:clamp(12px,1.5vw,18px);
   grid-template-columns:repeat(auto-fill,minmax(clamp(124px,13vw,170px),1fr))}
 .grid .card{width:auto}
-.results-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 0 18px;position:sticky;
-  top:var(--nav-h);z-index:40;background:linear-gradient(180deg,var(--bg-0) 62%,transparent)}
-.results-bar h2{margin:0;font-size:clamp(17px,2vw,24px);font-weight:750;letter-spacing:-.025em}
-.results-bar .sub{font-size:12.5px;color:var(--txt-faint)}
-.results-bar .linea{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Cabecera de resultados: centrada, para que el término buscado y el número de
+   coincidencias sean lo primero que se lee al terminar de escribir. */
+.results-bar{display:flex;flex-direction:column;align-items:center;gap:14px;
+  padding:clamp(24px,3.4vw,40px) 0 clamp(16px,2.2vw,24px);text-align:center}
+.results-bar::after{content:'';width:min(260px,55%);height:1px;
+  background:linear-gradient(90deg,transparent,var(--stroke),transparent)}
+.res-info{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:100%}
+.results-bar .linea{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.results-bar h2{margin:0;font-size:clamp(21px,3vw,33px);font-weight:800;letter-spacing:-.032em;
+  line-height:1.15;max-width:22ch;overflow-wrap:anywhere}
+.results-bar h2 .term{color:var(--accent)}
+.results-bar .sub{font-size:13px;color:var(--txt-faint)}
+.res-tools{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;max-width:100%}
 /* Marcador de resultados: se ve de un vistazo si la búsqueda encontró algo */
-.res-pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;
-  border-radius:var(--r-pill);font-size:12px;font-weight:700;white-space:nowrap;
+.res-pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 15px;
+  border-radius:var(--r-pill);font-size:12.5px;font-weight:750;white-space:nowrap;
   background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);
   border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
 .res-pill.vacio{background:rgba(255,88,88,.15);color:#ff9f9f;border-color:rgba(255,88,88,.42)}
@@ -470,14 +478,14 @@ select.sel option{background:#12151f;color:#f2f3f7}
   <div id="rows-view"></div>
   <div id="grid-view" hidden>
     <div class="results-bar">
-      <div role="status" aria-live="polite">
+      <div class="res-info" role="status" aria-live="polite">
         <div class="linea">
           <h2 id="res-title">Resultados</h2>
           <span class="res-pill" id="res-pill"></span>
         </div>
         <div class="sub" id="res-sub"></div>
       </div>
-      <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div class="res-tools">
         <div class="active-filters" id="active-filters"></div>
         <select class="sel" id="sort">
           <option value="recientes">Añadidas primero</option>
@@ -888,9 +896,14 @@ const META = DB.meta;
 const DELTA = (() => {
   try { return JSON.parse(localStorage.getItem('cm.delta')) || []; } catch { return []; }
 })();
+/* Sólo se puede ver algo si hay reproducción directa (videoId) o al menos una
+   fuente alternativa (embed). Lo demás es una ficha sin película detrás, así que
+   se queda fuera del catálogo: fuera de las cifras, de los filtros y del buscador. */
+const reproducible = m => !!(m && (m.videoId || m.embed));
 const M = (() => {
   const base = new Set(DB.movies.map(m => m.id));
   return [...DB.movies, ...DELTA.filter(d => d && d.id && !base.has(d.id))]
+    .filter(reproducible)
     .sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
 })();
 
@@ -910,9 +923,22 @@ const LS = {
 /* ---------- índice de búsqueda ---------- */
 M.forEach((m, i) => {
   m._i = i;
-  m._s = fold([m.titulo, m.tituloOriginal, m.tituloAlt, (m.directores || []).join(' '),
-    (m.paises || []).join(' '), (m.generos || []).join(' '), m.anio, m.tipo, m.sinopsis].join(' '));
+  // Tres niveles: los títulos sueltos, títulos + dirección, y la ficha entera.
+  // El buscador los usa para no dar el mismo peso a un título que a una sinopsis.
+  m._tits = [m.titulo, m.tituloOriginal, m.tituloAlt].filter(Boolean).map(fold);
+  m._tit = m._tits.join(' · ');
+  m._t = m._tit + ' ' + fold((m.directores || []).join(' '));
+  m._s = m._t + ' ' + fold([(m.paises || []).join(' '), (m.generos || []).join(' '),
+    m.anio, m.tipo, m.sinopsis].join(' '));
 });
+
+/* Palabras que no distinguen nada: si se buscan dentro de la sinopsis, cualquier
+   frase normal devuelve medio catálogo. Sólo cuentan si están en el título o en
+   la dirección, igual que las palabras de tres letras o menos. */
+const VACIAS = new Set(('de del la el los las un una unos unas y e o u que no ni con por para al ' +
+  'en es son su sus se lo le les como mas más pero sin sobre entre cuando donde todo toda todos ' +
+  'todas esta este esto esa ese eso aquel muy ya tras desde hasta a').split(' '));
+const debil = t => t.length <= 3 || VACIAS.has(t);
 
 /* ---------- novedades: qué había la última vez ---------- */
 const NOVEDADES = (() => {
@@ -934,7 +960,7 @@ const FAVS = new Set(LS.get('favs', []));
 const S = {
   q: '', generos: new Set(), paises: new Set(), decadas: new Set(), tipos: new Set(),
   idiomas: new Set(), directores: new Set(), imdbMin: 0, soloNuevas: false, soloFavs: false,
-  soloVideo: false, orden: 'recientes', anioMin: null, anioMax: null
+  soloDirecta: false, orden: 'recientes', anioMin: null, anioMax: null
 };
 
 /* ---------- facetas ---------- */
@@ -960,11 +986,21 @@ const ANIOS = M.map(m => m.anio).filter(Boolean);
 const ANIO_MIN = Math.min(...ANIOS), ANIO_MAX = Math.max(...ANIOS);
 
 /* ---------- filtrado ---------- */
+/* Qué tan bien encaja una película con lo buscado: cuanto más bajo, más arriba. */
+function relevancia(m, q, terms) {
+  if (m._tits.includes(q)) return 0;                     // el título es justo eso
+  if (m._tits.some(t => t.startsWith(q))) return 1;      // el título empieza así
+  if (terms.every(t => m._tit.includes(t))) return 2;    // está en el título
+  if (terms.every(t => m._t.includes(t))) return 3;      // está en la dirección
+  return 4;                                              // sólo en el resto de la ficha
+}
+
 function filtrar() {
   const q = fold(S.q).trim();
-  const terms = q ? q.split(/\s+/) : [];
+  const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+  const coincide = (m, t) => debil(t) ? m._t.includes(t) : m._s.includes(t);
   let out = M.filter(m => {
-    if (terms.length && !terms.every(t => m._s.includes(t))) return false;
+    if (terms.length && !terms.every(t => coincide(m, t))) return false;
     if (S.generos.size && !(m.generos || []).some(g => S.generos.has(g))) return false;
     if (S.paises.size && !(m.paises || []).some(p => S.paises.has(p))) return false;
     if (S.decadas.size && !S.decadas.has(m.decada)) return false;
@@ -976,7 +1012,7 @@ function filtrar() {
     if (S.anioMax && !(m.anio <= S.anioMax)) return false;
     if (S.soloNuevas && !NOVEDADES.has(m.id)) return false;
     if (S.soloFavs && !FAVS.has(m.id)) return false;
-    if (S.soloVideo && !(m.videoId || m.embed)) return false;
+    if (S.soloDirecta && !m.videoId) return false;
     return true;
   });
   const ord = {
@@ -987,10 +1023,14 @@ function filtrar() {
     titulo: (a, b) => fold(a.titulo).localeCompare(fold(b.titulo)),
     duracion: (a, b) => (b.duracion || 0) - (a.duracion || 0)
   }[S.orden];
-  return out.sort(ord);
+  // Al buscar manda la relevancia, salvo que se haya pedido un orden concreto:
+  // en ese caso se respeta al pie de la letra.
+  if (!terms.length || S.orden !== 'recientes') return out.sort(ord);
+  const peso = new Map(out.map(m => [m, relevancia(m, q, terms)]));
+  return out.sort((a, b) => peso.get(a) - peso.get(b) || ord(a, b));
 }
-const hayFiltros = () => S.q || S.generos.size || S.paises.size || S.decadas.size || S.tipos.size ||
-  S.idiomas.size || S.directores.size || S.imdbMin || S.soloNuevas || S.soloFavs || S.soloVideo ||
+const hayFiltros = () => S.q.trim() || S.generos.size || S.paises.size || S.decadas.size || S.tipos.size ||
+  S.idiomas.size || S.directores.size || S.imdbMin || S.soloNuevas || S.soloFavs || S.soloDirecta ||
   S.anioMin || S.anioMax;
 
 /* ---------- tarjeta ---------- */
@@ -1079,7 +1119,7 @@ function construirTicker() {
     [`${ANIO_MIN}–${ANIO_MAX}`, 'Años de cine'],
     [decTop ? decTop[0] + 's' : '—', 'Década más nutrida'],
     [horas.toLocaleString('es'), 'Horas de metraje'],
-    [M.filter(m => m.videoId || m.embed).length.toLocaleString('es'), 'Con vídeo'],
+    [M.filter(m => m.videoId).length.toLocaleString('es'), 'Con reproducción directa'],
   ];
   const tanda = stats.map(([v, k]) =>
     `<span class="tk">${esc(v)} <i>${esc(k)}</i></span><span class="sep">◆</span>`).join('');
@@ -1098,8 +1138,10 @@ function pintarGrid(reset) {
   if (reset) {
     const n = gridData.length;
     const q = S.q.trim();
-    $('#res-title').textContent = q ? `“${q}”`
+    $('#res-title').innerHTML = q ? `<span class="term">“${esc(q)}”</span>`
       : (S.soloNuevas ? 'Novedades' : S.soloFavs ? 'Mi lista' : 'Explorar catálogo');
+    // buscando, el orden por defecto es la relevancia; sin buscar, la fecha
+    $('#sort').options[0].textContent = q ? 'Más relevantes' : 'Añadidas primero';
     // Marcador visible: dice sin rodeos si la búsqueda encontró algo
     const pill = $('#res-pill');
     pill.textContent = n ? `${n.toLocaleString('es')} resultado${n === 1 ? '' : 's'}` : 'Sin resultados';
@@ -1140,7 +1182,7 @@ function pintarChipsActivos() {
   if (S.imdbMin) add('IMDb', '≥ ' + S.imdbMin, JSON.stringify(['imdbMin']));
   if (S.anioMin) add('Desde', S.anioMin, JSON.stringify(['anioMin']));
   if (S.anioMax) add('Hasta', S.anioMax, JSON.stringify(['anioMax']));
-  if (S.soloVideo) add('Sólo', 'con vídeo', JSON.stringify(['soloVideo']));
+  if (S.soloDirecta) add('Sólo', 'reproducción directa', JSON.stringify(['soloDirecta']));
   $('#active-filters').innerHTML = chips.join('');
   const n = chips.length;
   $('#f-count').style.display = n ? '' : 'none';
@@ -1177,9 +1219,9 @@ function construirFiltros() {
     </div>
     <div class="fgroup"><h4>Otros</h4>
       <div class="toggles">
-        <label class="tg"><input type="checkbox" id="t-new"> Sólo novedades</label>
-        <label class="tg"><input type="checkbox" id="t-fav"> Sólo mi lista</label>
-        <label class="tg"><input type="checkbox" id="t-vid"> Sólo con vídeo disponible</label>
+        <label class="tg"><input type="checkbox" id="t-new"${S.soloNuevas ? ' checked' : ''}> Sólo novedades</label>
+        <label class="tg"><input type="checkbox" id="t-fav"${S.soloFavs ? ' checked' : ''}> Sólo mi lista</label>
+        <label class="tg"><input type="checkbox" id="t-dir"${S.soloDirecta ? ' checked' : ''}> Sólo con reproducción directa</label>
       </div>
     </div>`;
 
@@ -1197,7 +1239,7 @@ function construirFiltros() {
   rango('imdb', 'imdb-o', 'imdbMin', v => v ? '★ ' + v : 'Todas');
   $('#t-new').onchange = e => { S.soloNuevas = e.target.checked; App.aplicar(); };
   $('#t-fav').onchange = e => { S.soloFavs = e.target.checked; App.aplicar(); };
-  $('#t-vid').onchange = e => { S.soloVideo = e.target.checked; App.aplicar(); };
+  $('#t-dir').onchange = e => { S.soloDirecta = e.target.checked; App.aplicar(); };
   actualizarContadoresGrupo();
 }
 function actualizarContadoresGrupo() {
@@ -1358,7 +1400,7 @@ const App = {
   home() {
     S.q = ''; $('#q').value = '';
     ['generos', 'paises', 'decadas', 'tipos', 'idiomas', 'directores'].forEach(k => S[k].clear());
-    S.imdbMin = 0; S.soloNuevas = S.soloFavs = S.soloVideo = false; S.anioMin = S.anioMax = null;
+    S.imdbMin = 0; S.soloNuevas = S.soloFavs = S.soloDirecta = false; S.anioMin = S.anioMax = null;
     construirFiltros(); this.aplicar(); scrollTo({ top: 0, behavior: 'smooth' });
   },
   clearFilters() { this.home(); },
@@ -1585,7 +1627,9 @@ async function buscarNovedades({ silencioso = false } = {}) {
 
       if (!conocidos.has(crudo.id)) {
         const peli = C.construirPelicula(crudo);
-        if (peli) { nuevos.push(peli); conocidos.add(crudo.id); }
+        // sin vídeo ni fuente alternativa no entra, pero se marca como visto
+        if (peli && reproducible(peli)) nuevos.push(peli);
+        conocidos.add(crudo.id);
       }
       if (!crudo.prevId || crudo.prevId === crudo.id) break;
       cursor = crudo.prevId;
