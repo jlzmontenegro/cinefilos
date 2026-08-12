@@ -29,6 +29,10 @@
   color-scheme: dark;
 }
 *{box-sizing:border-box}
+/* El atributo hidden tiene que ganarle a cualquier display de esta hoja: #hero
+   es display:flex y con la regla del navegador a secas seguía viéndose durante
+   la búsqueda, así que no se notaba si había resultados o no. */
+[hidden]{display:none!important}
 /* clip, no hidden: recorta el desbordamiento lateral sin crear un contenedor
    de scroll, que rompería el position:sticky de la barra superior. */
 html{overflow-x:clip}
@@ -234,6 +238,14 @@ main{padding:0 0 90px}
   top:var(--nav-h);z-index:40;background:linear-gradient(180deg,var(--bg-0) 62%,transparent)}
 .results-bar h2{margin:0;font-size:clamp(17px,2vw,24px);font-weight:750;letter-spacing:-.025em}
 .results-bar .sub{font-size:12.5px;color:var(--txt-faint)}
+.results-bar .linea{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Marcador de resultados: se ve de un vistazo si la búsqueda encontró algo */
+.res-pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;
+  border-radius:var(--r-pill);font-size:12px;font-weight:700;white-space:nowrap;
+  background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+.res-pill.vacio{background:rgba(255,88,88,.15);color:#ff9f9f;border-color:rgba(255,88,88,.42)}
+.res-pill:empty{display:none}
 select.sel{height:34px;border-radius:var(--r-pill);border:1px solid var(--stroke);background:var(--glass);
   color:var(--txt);font-size:12.5px;padding:0 30px 0 13px;cursor:pointer;outline:none;font-weight:550;
   -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);appearance:none;
@@ -247,8 +259,27 @@ select.sel option{background:#12151f;color:#f2f3f7}
 .af button{background:rgba(0,0,0,.24);border:none;color:var(--sobre-accent);width:17px;height:17px;border-radius:50%;
   cursor:pointer;font-size:11px;line-height:1;display:grid;place-items:center}
 #sentinel{height:60px;display:grid;place-items:center;color:var(--txt-faint);font-size:12.5px}
-.empty{text-align:center;padding:90px 20px;color:var(--txt-dim)}
+.empty{text-align:center;padding:70px 20px 90px;color:var(--txt-dim)}
 .empty .big{font-size:44px;margin-bottom:14px;opacity:.5}
+.empty b{display:block;font-size:clamp(17px,2.2vw,22px);color:var(--txt);font-weight:750;
+  letter-spacing:-.02em;margin-bottom:8px}
+.empty b .term{color:var(--accent)}
+.empty p{margin:0 auto;max-width:46ch;font-size:14px;line-height:1.6}
+.empty .btn-primary{margin-top:22px}
+
+/* --------------------------- VOLVER ARRIBA ------------------------------ */
+#top{position:fixed;right:clamp(14px,3vw,34px);bottom:clamp(18px,3vw,28px);z-index:55;
+  width:48px;height:48px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  border:1px solid var(--stroke);background:var(--glass);color:var(--txt);font-size:18px;line-height:1;
+  -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:var(--shadow-lift);
+  opacity:0;visibility:hidden;transform:translateY(14px) scale(.9);
+  transition:opacity .28s var(--ease),transform .28s var(--ease),
+             visibility 0s linear .28s,background .2s}
+#top.on{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+#top:hover{background:var(--glass-hi);transform:translateY(-3px)}
+#top:active{transform:scale(.93)}
+@media(max-width:640px){#top{width:44px;height:44px;bottom:16px;font-size:17px}}
 
 /* ---------------------------- PANEL DE FILTROS --------------------------- */
 /* El panel vive fuera de la pantalla mientras está cerrado. Además de moverlo
@@ -439,8 +470,11 @@ select.sel option{background:#12151f;color:#f2f3f7}
   <div id="rows-view"></div>
   <div id="grid-view" hidden>
     <div class="results-bar">
-      <div>
-        <h2 id="res-title">Resultados</h2>
+      <div role="status" aria-live="polite">
+        <div class="linea">
+          <h2 id="res-title">Resultados</h2>
+          <span class="res-pill" id="res-pill"></span>
+        </div>
         <div class="sub" id="res-sub"></div>
       </div>
       <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -483,6 +517,8 @@ select.sel option{background:#12151f;color:#f2f3f7}
   <div class="back" onclick="App.closeModal()"></div>
   <div class="sheet glass" id="sheet"></div>
 </div>
+
+<button id="top" onclick="App.arriba()" title="Volver arriba" aria-label="Volver arriba">↑</button>
 
 <div id="toast" class="glass"></div>
 
@@ -1060,12 +1096,29 @@ function pintarGrid(reset) {
   $('#sentinel').textContent = gridShown >= gridData.length
     ? (gridData.length ? '· fin del catálogo ·' : '') : 'Cargando…';
   if (reset) {
-    $('#res-title').textContent = S.q ? `“${S.q}”` : (S.soloNuevas ? 'Novedades' : S.soloFavs ? 'Mi lista' : 'Explorar catálogo');
-    $('#res-sub').textContent = `${gridData.length.toLocaleString('es')} título${gridData.length === 1 ? '' : 's'}`;
-    if (!gridData.length) {
+    const n = gridData.length;
+    const q = S.q.trim();
+    $('#res-title').textContent = q ? `“${q}”`
+      : (S.soloNuevas ? 'Novedades' : S.soloFavs ? 'Mi lista' : 'Explorar catálogo');
+    // Marcador visible: dice sin rodeos si la búsqueda encontró algo
+    const pill = $('#res-pill');
+    pill.textContent = n ? `${n.toLocaleString('es')} resultado${n === 1 ? '' : 's'}` : 'Sin resultados';
+    pill.classList.toggle('vacio', !n);
+    $('#res-sub').textContent = n
+      ? (q ? `de ${M.length.toLocaleString('es')} títulos del catálogo`
+           : `${n.toLocaleString('es')} título${n === 1 ? '' : 's'} con lo que has elegido`)
+      : (q ? 'Revisa la ortografía o usa menos palabras'
+           : 'Ningún título coincide con los filtros activos');
+    if (!n) {
       $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1">
-        <div class="big">🎞️</div><b>Sin resultados</b>
-        <p>Prueba con menos filtros o revisa la ortografía.</p></div>`;
+        <div class="big">🔍</div>
+        <b>${q ? `No encontramos nada para <span class="term">“${esc(q)}”</span>`
+               : 'Ningún título coincide con los filtros'}</b>
+        <p>${q ? 'Prueba con menos palabras o revisa la ortografía. También puedes buscar por director, país, género o año.'
+               : 'Prueba a quitar alguno de los filtros activos.'}</p>
+        <button class="btn-primary" onclick="App.${q ? 'limpiarBusqueda' : 'clearFilters'}()">
+          ${q ? '✕ Limpiar búsqueda' : '✕ Quitar filtros'}
+        </button></div>`;
     }
   }
   pintarChipsActivos();
@@ -1288,10 +1341,15 @@ function reproducir(vid) {
 /* ---------- API pública ---------- */
 const App = {
   aplicar() {
-    const hay = hayFiltros();
+    const hay = !!hayFiltros();
     $('#rows-view').hidden = hay;
     $('#hero').hidden = hay;
     $('#grid-view').hidden = !hay;
+    // Con el héroe oculto no tiene sentido que siga rotando ni recoloreando el fondo
+    if (hay) { clearInterval(heroTimer); heroTimer = null; }
+    else if (!heroTimer && heroList.length > 1) {
+      heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), 9000);
+    }
     if (hay) pintarGrid(true); else { pintarChipsActivos(); }
     $('#btn-new').classList.toggle('on', S.soloNuevas);
     $('#btn-fav').classList.toggle('on', S.soloFavs);
@@ -1304,6 +1362,12 @@ const App = {
     construirFiltros(); this.aplicar(); scrollTo({ top: 0, behavior: 'smooth' });
   },
   clearFilters() { this.home(); },
+  /* Borra sólo el texto buscado y deja intactos los filtros del panel */
+  limpiarBusqueda() {
+    S.q = ''; $('#q').value = ''; this.aplicar();
+    $('#q').focus(); scrollTo({ top: 0, behavior: 'smooth' });
+  },
+  arriba() { scrollTo({ top: 0, behavior: 'smooth' }); },
   openFilters() { $('#filters').classList.add('open'); $('#scrim').classList.add('on'); },
   closeFilters() { $('#filters').classList.remove('open'); $('#scrim').classList.remove('on'); },
   toggleNovedades() { S.soloNuevas = !S.soloNuevas; if (S.soloNuevas) S.soloFavs = false; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
@@ -1399,8 +1463,25 @@ document.addEventListener('input', e => {
 let tq = null;
 $('#q').addEventListener('input', e => {
   clearTimeout(tq);
-  tq = setTimeout(() => { S.q = e.target.value; App.aplicar(); }, 160);
+  tq = setTimeout(() => {
+    S.q = e.target.value;
+    App.aplicar();
+    // sube a los resultados: si el usuario estaba abajo, no se enteraría de si hubo o no
+    if (scrollY > 0) scrollTo({ top: 0 });
+  }, 160);
 });
+
+/* botón de volver arriba: aparece cuando ya se ha bajado un poco */
+const btnTop = $('#top');
+let topTick = false;
+addEventListener('scroll', () => {
+  if (topTick) return;
+  topTick = true;
+  requestAnimationFrame(() => {
+    topTick = false;
+    btnTop.classList.toggle('on', scrollY > 460);
+  });
+}, { passive: true });
 $('#sort').addEventListener('change', e => { S.orden = e.target.value; pintarGrid(true); });
 
 /* reflejo especular que sigue al puntero */
