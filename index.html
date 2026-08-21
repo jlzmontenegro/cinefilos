@@ -34,13 +34,15 @@
    la búsqueda, así que no se notaba si había resultados o no. */
 [hidden]{display:none!important}
 /* clip, no hidden: recorta el desbordamiento lateral sin crear un contenedor
-   de scroll, que rompería el position:sticky de la barra superior. */
+   de scroll. Tiene que ser clip en html Y en body: basta con que uno de los dos
+   sea hidden para que el navegador lo convierta en contenedor de scroll y la
+   barra superior deje de quedarse pegada arriba al bajar. */
 html{overflow-x:clip}
 html,body{margin:0;padding:0;max-width:100%}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif;
   color:var(--txt); background:var(--bg-0); min-height:100vh;
-  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  -webkit-font-smoothing:antialiased; overflow-x:clip;
   font-synthesis-weight:none;
 }
 /* Ambiente: dos orbes de color que reaccionan al contenido destacado ------- */
