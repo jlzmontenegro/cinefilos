@@ -12,7 +12,7 @@ const DIAS = Number(process.env.DIAS || 7);
 const DESTINO = process.env.DESTINO || '';
 const REMITENTE = process.env.REMITENTE || DESTINO;
 const SITIO = process.env.SITIO || 'https://jlzmontenegro.github.io/cinefilos';
-const CAFE = 'https://www.paypal.com/paypalme/jlzmontenegro';
+const LLAVE = '@cinefilos';   // llave de Bre-B
 
 // Sólo salen las mejor valoradas: en una semana entran decenas y lo que interesa
 // de un vistazo es lo bueno. Además, Gmail recorta los mensajes que pasan de
@@ -67,7 +67,7 @@ const md = [
   }),
   restantes > 0 ? `\ny ${restantes} título${restantes === 1 ? '' : 's'} más.` : '',
   '',
-  `[Ver el catálogo](${SITIO}) · [Invitar un café](${CAFE})`,
+  `[Ver el catálogo](${SITIO}) · ¿Un café? Llave Bre-B \`${LLAVE}\``,
 ].join('\n');
 fs.writeFileSync('resumen.md', md);
 
@@ -171,16 +171,17 @@ const cuerpo = `<!doctype html>
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
              style="background:#fffaea;border:1px solid #ffe9a3;border-radius:12px">
         <tr>
-          <td width="54" align="center" valign="middle" style="padding:16px 0 16px 16px;font-size:26px">☕</td>
-          <td valign="middle" style="padding:16px 10px">
+          <td width="54" align="center" valign="top" style="padding:16px 0 16px 16px;font-size:26px">☕</td>
+          <td valign="top" style="padding:16px 16px 16px 10px">
             <div style="font-size:13.5px;font-weight:700;color:#15161a">¿Te sirve el catálogo?</div>
-            <div style="font-size:12.5px;color:#75757f;margin-top:2px;line-height:1.45">
+            <div style="font-size:12.5px;color:#75757f;margin:2px 0 12px;line-height:1.45">
               Mantenerlo cuesta ratos y ganas. Un café ayuda.</div>
-          </td>
-          <td align="right" valign="middle" style="padding:16px 16px 16px 0">
-            <a href="${CAFE}" style="display:inline-block;background:#ffc400;color:#0a0a0a;
-               text-decoration:none;font-weight:700;font-size:12.5px;padding:9px 16px;
-               border-radius:999px;white-space:nowrap">Invitar un café</a>
+            <!-- La llave no se puede enlazar: se copia a mano en la app del banco -->
+            <span style="display:inline-block;background:#ffffff;border:1px solid #ffe9a3;
+              border-radius:999px;padding:9px 16px;font-size:13px;color:#15161a">
+              Llave Bre-B
+              <b style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+                 letter-spacing:.02em">${LLAVE}</b></span>
           </td>
         </tr>
       </table>

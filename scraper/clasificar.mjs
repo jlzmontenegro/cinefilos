@@ -192,11 +192,16 @@ export function crearClasificador() {
     // uno acepta lo primero y rechaza lo segundo.
     const SEP = '(?:\\s+[-–—]\\s*|\\s*[-–—]\\s+)';
 
+    // Después del año se admiten más separadores que antes: hay cabeceras escritas
+    // con punto ("- 1960 . Stanley Kubrick"). Delante del año se sigue exigiendo
+    // guion, porque el punto es demasiado común dentro de un título ("Dr. No").
+    const SEP2 = '(?:\\s+[-–—.·|]\\s*|\\s*[-–—.·|]\\s+)';
+
     // Primero el formato bueno, con guion delante del año. Sólo si falla se admite
     // la variante escrita con espacios ("Druk (Una ronda más)  2020 - Vinterberg"),
-    // que exige guion *después* del año para no tragarse cualquier cifra suelta.
-    const m = new RegExp(`^(.*?)${SEP}(${ANIOS})(?:${SEP}(.*))?$`).exec(L)
-           || new RegExp(`^(.*?)\\s+(${ANIOS})${SEP}(.*)$`).exec(L);
+    // que exige separador *después* del año para no tragarse cualquier cifra suelta.
+    const m = new RegExp(`^(.*?)${SEP}(${ANIOS})(?:${SEP2}(.*))?$`).exec(L)
+           || new RegExp(`^(.*?)\\s+(${ANIOS})${SEP2}(.*)$`).exec(L);
 
     let titulo = L, anio = null, resto = '';
     // De una lista de años se guarda el primero: es cuando empezó la obra.
@@ -206,15 +211,29 @@ export function crearClasificador() {
       resto = clean(m[3] || '');
     }
 
+    // Lo que va entre paréntesis y habla de la copia, no de la obra. El patrón es
+    // deliberadamente estrecho: en las 5.500 fichas sólo hay ocho notas distintas
+    // y todas son de subtítulos. Con una lista más amplia («subs», «parte»,
+    // «temporada») se colaban títulos legítimos — «El guardia del subSUELO», «La
+    // TEMPORADA del diablo», «Un lugar en ninguna PARTE» — que perdían su
+    // traducción o acababan mostrándose con la nota como título.
+    const NOTA_VERSION = /subtitul|english\s+subtitle/i;
+
     let director = resto, notas = '';
     const nm = /^(.*?)\s*\(([^()]*)\)\s*$/.exec(resto);
-    if (nm && /subtitul|english|subs|vose|castellano|latino|doblad|audio|hd|calidad|parte|temporada|completa/i.test(nm[2])) {
-      director = clean(nm[1]); notas = clean(nm[2]);
-    }
+    if (nm && NOTA_VERSION.test(nm[2])) { director = clean(nm[1]); notas = clean(nm[2]); }
 
     let original = titulo, traducido = null;
     const tm = /^(.+?)\s*\(([^()]+)\)\s*$/.exec(titulo);
-    if (tm) { original = clean(tm[1]); traducido = clean(tm[2]); }
+    if (tm) {
+      original = clean(tm[1]);
+      // El paréntesis del título suele ser la traducción, pero si habla de la
+      // versión no puede acabar siendo el título. Pasaba con «Spartacus
+      // (Espartaco) - 1960 . Stanley Kubrick (subtitulado al español)», que se
+      // mostraba en el catálogo como «subtitulado al español».
+      if (NOTA_VERSION.test(tm[2])) notas = notas || clean(tm[2]);
+      else traducido = clean(tm[2]);
+    }
 
     const directores = director
       ? director.split(/\s*,\s*|\s+y\s+|\s+&\s+|\s+and\s+/i).map(clean).filter((d) => d && d.length < 60)

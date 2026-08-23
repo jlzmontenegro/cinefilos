@@ -303,6 +303,43 @@ select.sel option{background:#12151f;color:#f2f3f7}
 .empty p{margin:0 auto;max-width:46ch;font-size:14px;line-height:1.6}
 .empty .btn-primary{margin-top:22px}
 
+/* ------------------------------ EL CAFÉ ---------------------------------- */
+#cafe{position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;padding:20px}
+#cafe.on{display:flex}
+#cafe .back{position:absolute;inset:0;background:rgba(2,3,8,.66);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#cafe .caja{position:relative;width:min(420px,100%);border-radius:var(--r-panel);
+  padding:26px 24px 22px;text-align:center;animation:rise .42s var(--ease) both}
+#cafe .taza{font-size:38px;line-height:1}
+#cafe h3{margin:10px 0 6px;font-size:19px;font-weight:750;letter-spacing:-.02em}
+#cafe p{margin:0 0 18px;font-size:13.5px;line-height:1.6;color:var(--txt-dim)}
+#cafe small{display:block;margin-top:16px;font-size:11.5px;color:var(--txt-faint)}
+/* Cada medio de pago: a la izquierda quién es, a la derecha la acción */
+#cafe .opcion{display:flex;align-items:center;gap:12px;text-align:left;width:100%;
+  padding:13px 14px;margin-bottom:10px;border-radius:16px;border:1px solid var(--stroke-soft);
+  background:rgba(255,255,255,.04);text-decoration:none;color:var(--txt)}
+#cafe .opcion:last-of-type{margin-bottom:0}
+#cafe .quien{flex:1;min-width:0}
+#cafe .quien b{display:block;font-size:14px;font-weight:700}
+#cafe .quien span{display:block;font-size:11.5px;color:var(--txt-faint);margin-top:2px}
+#cafe .donde{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--txt-faint);border:1px solid var(--stroke-soft);
+  border-radius:var(--r-pill);padding:1px 7px;margin-left:6px;vertical-align:1px}
+#cafe .llave,#cafe .ir{flex:0 0 auto;border-radius:var(--r-pill);cursor:pointer;
+  font-size:12.5px;font-weight:700;white-space:nowrap;
+  border:1px solid color-mix(in srgb,var(--accent) 42%,transparent);
+  background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent);
+  padding:8px 14px;display:inline-flex;align-items:center;gap:8px;transition:background .2s}
+#cafe .llave:hover,#cafe .opcion.enlace:hover .ir{background:color-mix(in srgb,var(--accent) 24%,transparent)}
+#cafe .llave .acc{font-size:10.5px;font-weight:650;opacity:.75;
+  border-left:1px solid color-mix(in srgb,var(--accent) 38%,transparent);padding-left:8px}
+#cafe .llave.copiada{background:var(--accent);color:var(--sobre-accent);border-color:transparent}
+#cafe .llave.copiada .acc{opacity:1;border-color:rgba(0,0,0,.25)}
+@media(max-width:420px){
+  #cafe .opcion{flex-direction:column;align-items:flex-start;gap:10px}
+  #cafe .llave,#cafe .ir{width:100%;justify-content:center}
+}
+
 /* --------------------------- VOLVER ARRIBA ------------------------------ */
 #top{position:fixed;right:clamp(14px,3vw,34px);bottom:clamp(18px,3vw,28px);z-index:55;
   width:48px;height:48px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
@@ -414,9 +451,6 @@ select.sel option{background:#12151f;color:#f2f3f7}
   padding:13px 20px;border-radius:var(--r-pill);font-size:13.5px;font-weight:600;
   display:flex;align-items:center;gap:12px;transition:transform .5s var(--ease)}
 #toast.on{transform:translate(-50%,0)}
-@keyframes girar{to{transform:rotate(360deg)}}
-#btn-sync.activo .gira{display:inline-block;animation:girar 1s linear infinite}
-#btn-sync.activo{color:var(--accent)}
 #toast button{border:none;background:linear-gradient(140deg,var(--accent),var(--accent-2));color:var(--sobre-accent);
   height:30px;padding:0 14px;border-radius:var(--r-pill);font-size:12.5px;font-weight:650;cursor:pointer}
 #toast .x{background:none;color:var(--txt-faint);padding:0 4px;font-size:15px}
@@ -480,9 +514,8 @@ select.sel option{background:#12151f;color:#f2f3f7}
   <button class="nav-btn" id="btn-new" onclick="App.toggleNovedades()">✦ <span class="lbl">Novedades</span> <span class="badge" id="new-count">0</span></button>
   <button class="nav-btn" id="btn-fav" onclick="App.toggleFavs()">♥ <span class="lbl">Mi lista</span></button>
   <button class="nav-btn" onclick="App.azar()" title="Sorpréndeme">🎲 <span class="lbl">Al azar</span></button>
-  <a class="nav-btn" id="btn-cafe" href="https://www.paypal.com/paypalme/jlzmontenegro"
-     target="_blank" rel="noopener" title="Invítanos un café">☕ <span class="lbl">Café</span></a>
-  <button class="nav-btn" id="btn-sync" onclick="App.sync()" title="Buscar novedades en ok.ru"><span class="gira">⟳</span></button>
+  <button class="nav-btn" id="btn-cafe" onclick="App.abrirCafe()"
+     title="Invítanos un café">☕ <span class="lbl">Café</span></button>
   <button class="nav-btn" onclick="App.openFilters()">⚙ <span class="lbl">Filtros</span> <span class="badge" id="f-count" style="display:none">0</span></button>
 </nav>
 
@@ -533,10 +566,9 @@ select.sel option{background:#12151f;color:#f2f3f7}
   <footer id="cierre">
     <p>Si estás viendo esto es porque lo desarrollamos para que te diviertas y disfrutes
     de las mejores películas</p>
-    <a class="apoyo" href="https://www.paypal.com/paypalme/jlzmontenegro"
-       target="_blank" rel="noopener" title="Apoyar el proyecto con una donación por PayPal">
+    <button class="apoyo" onclick="App.abrirCafe()" title="Apoyar el proyecto">
       <span aria-hidden="true">☕</span> Invítanos un café
-    </a>
+    </button>
   </footer>
 </main>
 
@@ -558,6 +590,29 @@ select.sel option{background:#12151f;color:#f2f3f7}
 <div id="modal">
   <div class="back" onclick="App.closeModal()"></div>
   <div class="sheet glass" id="sheet"></div>
+</div>
+
+<div id="cafe">
+  <div class="back" onclick="App.cerrarCafe()"></div>
+  <div class="caja glass" role="dialog" aria-modal="true" aria-labelledby="cafe-tit">
+    <button class="close-x" onclick="App.cerrarCafe()" aria-label="Cerrar">✕</button>
+    <div class="taza" aria-hidden="true">☕</div>
+    <h3 id="cafe-tit">Invítanos un café</h3>
+    <p>El catálogo es gratis, sin anuncios y sin registro. Si te sirve, un café ayuda
+       a mantenerlo vivo.</p>
+
+    <div class="opcion">
+      <div class="quien">
+        <b>Bre-B</b>
+        <span>Desde cualquier banco o billetera</span>
+      </div>
+      <button class="llave" data-copiar="@cinefilos">
+        <span class="txt">@cinefilos</span><span class="acc">Copiar</span>
+      </button>
+    </div>
+
+    <small>Copia la llave y pégala en tu app. Gracias por estar al otro lado.</small>
+  </div>
 </div>
 
 <button id="top" onclick="App.arriba()" title="Volver arriba" aria-label="Volver arriba">↑</button>
@@ -1165,6 +1220,15 @@ const App = {
     $('#q').focus(); scrollTo({ top: 0, behavior: 'smooth' });
   },
   arriba() { scrollTo({ top: 0, behavior: 'smooth' }); },
+  abrirCafe() { $('#cafe').classList.add('on'); },
+  cerrarCafe() {
+    $('#cafe').classList.remove('on');
+    // que el botón no se quede en «¡Copiado!» para la próxima vez
+    $$('#cafe .llave.copiada').forEach(b => {
+      b.classList.remove('copiada');
+      b.querySelector('.acc').textContent = 'Copiar';
+    });
+  },
   openFilters() { $('#filters').classList.add('open'); $('#scrim').classList.add('on'); },
   closeFilters() { $('#filters').classList.remove('open'); $('#scrim').classList.remove('on'); },
   toggleNovedades() { S.soloNuevas = !S.soloNuevas; if (S.soloNuevas) S.soloFavs = false; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
@@ -1173,7 +1237,6 @@ const App = {
     $('#modal').classList.remove('open'); $('#sheet').innerHTML = '';
     document.body.style.overflow = ''; ponerHash(null);
   },
-  sync() { buscarNovedades({ silencioso: false }); },
   /* Una recomendación al azar entre lo que hay filtrado ahora mismo */
   azar() {
     const pool = (hayFiltros() ? filtrar() : M).filter(m => m.sinopsis);
@@ -1189,6 +1252,41 @@ const App = {
   }
 };
 window.App = App;
+
+/* Copiar la llave de pago. El portapapeles moderno exige contexto seguro y no
+   siempre lo hay abriendo el archivo con file://, así que si falla se recurre al
+   truco de toda la vida: un textarea invisible y execCommand. Y si tampoco, al
+   menos se deja el texto seleccionado para copiarlo a mano. */
+async function copiarAlPortapapeles(boton) {
+  const texto = boton.dataset.copiar;
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(texto);
+    ok = true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  const acc = boton.querySelector('.acc');
+  if (ok) {
+    boton.classList.add('copiada');
+    acc.textContent = '¡Copiado!';
+    clearTimeout(copiarAlPortapapeles._t);
+    copiarAlPortapapeles._t = setTimeout(() => {
+      boton.classList.remove('copiada');
+      acc.textContent = 'Copiar';
+    }, 2200);
+  } else {
+    acc.textContent = 'Cópialo a mano';
+    aviso(`Copia la llave: ${texto}`, 8000);
+  }
+}
 
 /* ---------- eventos globales ---------- */
 document.addEventListener('click', e => {
@@ -1237,6 +1335,9 @@ document.addEventListener('click', e => {
     construirFiltros(); App.aplicar();
     return;
   }
+  const copiar = t.closest('[data-copiar]');
+  if (copiar) { copiarAlPortapapeles(copiar); return; }
+
   const more = t.closest('[data-more]');
   if (more) { App.set(JSON.parse(more.dataset.more)); return; }
 
@@ -1296,7 +1397,8 @@ document.addEventListener('pointermove', e => {
 document.addEventListener('keydown', e => {
   if (e.key === '/' && document.activeElement !== $('#q')) { e.preventDefault(); $('#q').focus(); }
   if (e.key === 'Escape') {
-    if ($('#modal').classList.contains('open')) App.closeModal();
+    if ($('#cafe').classList.contains('on')) App.cerrarCafe();
+    else if ($('#modal').classList.contains('open')) App.closeModal();
     else if ($('#filters').classList.contains('open')) App.closeFilters();
   }
   if (e.key === 'Enter' && document.activeElement?.classList.contains('card')) {
@@ -1348,7 +1450,8 @@ let sincronizando = false;
 async function buscarNovedades({ silencioso = false } = {}) {
   if (sincronizando) return;
   sincronizando = true;
-  $('#btn-sync').classList.add('activo');
+  // el botón de sincronizar ya no está en la barra; la comprobación es automática
+  $('#btn-sync')?.classList.add('activo');
   const nuevos = [];
   let cortadoPorTope = false;
 
@@ -1394,7 +1497,7 @@ async function buscarNovedades({ silencioso = false } = {}) {
     }
   } finally {
     sincronizando = false;
-    $('#btn-sync').classList.remove('activo');
+    $('#btn-sync')?.classList.remove('activo');
     LS.set('ultimaSync', Date.now());
   }
 
