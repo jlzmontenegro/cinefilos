@@ -1,0 +1,172 @@
+# Mantiene el catálogo solo: busca novedades en ok.ru, renueva los pósters cuando
+# toca, reconstruye el HTML y lo publica en GitHub Pages.
+#
+# El HTML no se versiona: se genera aquí desde scraper/raw.jsonl + template.html y
+# se sube directamente como artefacto de Pages. Lo único que se guarda de vuelta en
+# el repositorio es raw.jsonl, que es el dato de verdad.
+name: Catálogo
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'      # cada lunes: buscar novedades
+    - cron: '13 4 1 8 *'      # cada 1 de agosto: renovar los pósters
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'Qué hacer'
+        type: choice
+        default: novedades
+        options: [novedades, posters, publicar]
+  push:
+    branches: [main]
+    paths:
+      - 'scraper/**'
+      - '.github/workflows/catalogo.yml'
+
+permissions:
+  contents: write      # para devolver raw.jsonl actualizado
+  pages: write
+  id-token: write
+
+# Un solo despliegue a la vez, y no se cancela el que esté en marcha
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  catalogo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: github-pages
+      url: ${{ steps.desplegar.outputs.page_url }}
+    env:
+      DEST: ${{ github.workspace }}/_build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Las tres entradas (horario, manual y push) acaban en el mismo trabajo, así
+      # que aquí se decide qué toca hacer en esta ejecución.
+      - name: Decidir el modo
+        id: modo
+        run: |
+          if [ -n "${{ inputs.modo }}" ]; then
+            modo="${{ inputs.modo }}"
+          elif [ "${{ github.event.schedule }}" = "13 4 1 8 *" ]; then
+            modo=posters
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            modo=publicar
+          else
+            modo=novedades
+          fi
+          echo "modo=$modo" >> "$GITHUB_OUTPUT"
+          echo "### Modo: \`$modo\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Buscar novedades en ok.ru
+        if: steps.modo.outputs.modo == 'novedades'
+        working-directory: scraper
+        run: node actualizar.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"
+
+      # Dos pasadas a propósito: en la primera se pierden peticiones por la carga y
+      # esas se quedan con el enlace viejo. La segunda sólo mira lo que siga caído.
+      - name: Renovar los enlaces de los pósters
+        if: steps.modo.outputs.modo == 'posters'
+        working-directory: scraper
+        run: |
+          node refrescar-posters.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"
+          SOLO_CAIDOS=1 node refrescar-posters.mjs 2>&1 | tee -a "$GITHUB_WORKSPACE/salida.txt"
+
+      # Se reconstruye siempre, aunque no haya novedades: así la fecha de
+      # «actualizado» del catálogo queda al día en cualquier caso.
+      - name: Reconstruir el catálogo
+        working-directory: scraper
+        run: |
+          node normalize.mjs
+          node build.mjs
+
+      - name: Comprobar que los datos rehidratan bien
+        working-directory: scraper
+        run: node verificar.mjs
+
+      # En el disco del proyecto el catálogo se llama Cinefilos.html; en el sitio
+      # tiene que ser index.html para que la URL quede limpia. El Cinefilos.html
+      # del repositorio es la página que redirige, para no romper enlaces viejos.
+      - name: Montar el sitio
+        run: |
+          mkdir -p _site
+          cp "$DEST/Cinefilos.html" _site/index.html
+          cp Cinefilos.html _site/Cinefilos.html
+          ls -lh _site
+
+      - name: Resumir lo que ha cambiado
+        id: resumen
+        run: |
+          : > nuevas.txt
+          if [ -f salida.txt ]; then
+            grep -oE '^[[:space:]]*\+ .*' salida.txt | sed 's/^[[:space:]]*+ //' > nuevas.txt || true
+          fi
+          nuevas=$(wc -l < nuevas.txt | tr -d ' ')
+          titulos=$(grep -oE '"total":[0-9]+' "$DEST/Cinefilos.html" | head -1 | cut -d: -f2 || true)
+          [ -n "$titulos" ] || titulos=0
+          echo "nuevas=$nuevas"   >> "$GITHUB_OUTPUT"
+          echo "titulos=$titulos" >> "$GITHUB_OUTPUT"
+          {
+            echo "- Títulos en el catálogo: **$titulos**"
+            echo "- Publicaciones nuevas: **$nuevas**"
+            if [ "$nuevas" != "0" ]; then
+              echo ""
+              echo "<details><summary>Qué ha entrado</summary>"
+              echo ""
+              sed 's/^/- /' nuevas.txt
+              echo ""
+              echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # raw.jsonl es el único dato que hay que conservar. [skip ci] evita que este
+      # propio commit vuelva a disparar el flujo y se muerda la cola.
+      - name: Guardar raw.jsonl si ha cambiado
+        run: |
+          if git diff --quiet -- scraper/raw.jsonl; then
+            echo "raw.jsonl sin cambios"
+            exit 0
+          fi
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scraper/raw.jsonl
+          git commit -m "Datos al dia (${{ steps.modo.outputs.modo }}): ${{ steps.resumen.outputs.titulos }} titulos [skip ci]"
+          git push
+
+      # Puente para n8n (o Discord, Slack, lo que sea): si existe el secreto
+      # WEBHOOK_NOVEDADES, se le manda un JSON con lo que ha entrado. Si el webhook
+      # falla no se rompe el despliegue: el catálogo importa más que el aviso.
+      - name: Avisar por webhook
+        env:
+          WEBHOOK: ${{ secrets.WEBHOOK_NOVEDADES }}
+          NUEVAS: ${{ steps.resumen.outputs.nuevas }}
+          TITULOS: ${{ steps.resumen.outputs.titulos }}
+          MODO: ${{ steps.modo.outputs.modo }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo 'sin WEBHOOK_NOVEDADES: no se avisa'; exit 0; fi
+          if [ "$NUEVAS" = "0" ]; then echo 'sin novedades: no se avisa'; exit 0; fi
+          jq -n --argjson n "$NUEVAS" --argjson t "$TITULOS" \
+                --rawfile lista nuevas.txt \
+                --arg sitio 'https://jlzmontenegro.github.io/cinefilos' \
+                --arg modo "$MODO" \
+             '{modo:$modo, nuevas:$n, total:$t, sitio:$sitio,
+               titulos: ($lista | split("\n") | map(select(length>0)))}' \
+            | curl -sS --fail-with-body -X POST -H 'Content-Type: application/json' \
+                   -d @- "$WEBHOOK" \
+            || echo 'el webhook no respondio bien (no es motivo para fallar el despliegue)'
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: desplegar
+        uses: actions/deploy-pages@v5

@@ -1,0 +1,6 @@
+# Generados: se reconstruyen desde raw.jsonl + template.html en cada despliegue
+scraper/movies.json
+scraper/crawl-state.json
+scraper/*.tmp
+_build/
+_site/

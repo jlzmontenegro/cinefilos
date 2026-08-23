@@ -1,0 +1,3 @@
+# Todo con saltos de línea LF: los scripts corren en Linux dentro de Actions y
+# raw.jsonl se parte por '\n' línea a línea.
+* text=auto eol=lf
