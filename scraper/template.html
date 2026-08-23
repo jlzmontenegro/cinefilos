@@ -1185,7 +1185,9 @@ function ponerHash(valor) {
 addEventListener('hashchange', () => {
   if (ignorarHash) return;
   const id = idDelHash();
-  if (id) abrirModal(id, false);
+  if (location.hash === '#cafe') App.abrirCafe();
+  else if (id) abrirModal(id, false);
+  else if ($('#cafe').classList.contains('on')) App.cerrarCafe();
   else if ($('#modal').classList.contains('open')) App.closeModal();
 });
 function reproducir(vid) {
@@ -1226,9 +1228,12 @@ const App = {
     $('#q').focus(); scrollTo({ top: 0, behavior: 'smooth' });
   },
   arriba() { scrollTo({ top: 0, behavior: 'smooth' }); },
+  // También se llega desde fuera con .../cinefilos/#cafe, que es a donde apunta
+  // el correo de los viernes: allí la llave se puede copiar de un toque.
   abrirCafe() { $('#cafe').classList.add('on'); },
   cerrarCafe() {
     $('#cafe').classList.remove('on');
+    if (location.hash === '#cafe') ponerHash(null);
     // que el botón no se quede en «¡Copiado!» para la próxima vez
     $$('#cafe .llave.copiada').forEach(b => {
       b.classList.remove('copiada');
@@ -1445,8 +1450,9 @@ construirFilas();
 construirTicker();
 construirFiltros();
 App.aplicar();
-// Si se ha llegado con un enlace directo (#p<id>), se abre esa ficha
+// Si se ha llegado con un enlace directo, se abre lo que toque
 if (idDelHash()) abrirModal(idDelHash(), false);
+else if (location.hash === '#cafe') App.abrirCafe();
 setTimeout(avisoNovedades, 1400);
 
 </script>
