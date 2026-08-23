@@ -1099,9 +1099,35 @@ function abrirModal(id, autoplay) {
 
   $('#modal').classList.add('open');
   document.body.style.overflow = 'hidden';
+  ponerHash(m.id);
   tinteAmbiente(img);
   if (autoplay && m.videoId) reproducir(m.videoId);
 }
+
+/* ---------- enlace directo a una ficha ----------
+   .../cinefilos/#p<id> abre esa película nada más cargar. Lo usan los correos de
+   novedades y sirve para compartir un título concreto. El prefijo «p» evita que
+   el navegador confunda el identificador con el ancla de algún elemento.
+   Se hace con el hash y no con history.pushState porque la página también tiene
+   que funcionar abierta con file://, donde el historial da problemas. */
+const idDelHash = () => (location.hash.match(/^#p(\d+)$/) || [])[1] || null;
+let ignorarHash = false;
+
+function ponerHash(valor) {
+  ignorarHash = true;
+  try {
+    if (valor) location.hash = 'p' + valor;
+    else if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  } catch { if (!valor) location.hash = ''; }   // file:// puede rechazar replaceState
+  setTimeout(() => { ignorarHash = false; }, 0);
+}
+
+addEventListener('hashchange', () => {
+  if (ignorarHash) return;
+  const id = idDelHash();
+  if (id) abrirModal(id, false);
+  else if ($('#modal').classList.contains('open')) App.closeModal();
+});
 function reproducir(vid) {
   const p = $('#player');
   p.innerHTML = `<iframe src="https://ok.ru/videoembed/${encodeURIComponent(vid)}?autoplay=1"
@@ -1144,7 +1170,10 @@ const App = {
   closeFilters() { $('#filters').classList.remove('open'); $('#scrim').classList.remove('on'); },
   toggleNovedades() { S.soloNuevas = !S.soloNuevas; if (S.soloNuevas) S.soloFavs = false; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
   toggleFavs() { S.soloFavs = !S.soloFavs; if (S.soloFavs) S.soloNuevas = false; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
-  closeModal() { $('#modal').classList.remove('open'); $('#sheet').innerHTML = ''; document.body.style.overflow = ''; },
+  closeModal() {
+    $('#modal').classList.remove('open'); $('#sheet').innerHTML = '';
+    document.body.style.overflow = ''; ponerHash(null);
+  },
   sync() { buscarNovedades({ silencioso: false }); },
   /* Una recomendación al azar entre lo que hay filtrado ahora mismo */
   azar() {
@@ -1406,6 +1435,8 @@ construirFilas();
 construirTicker();
 construirFiltros();
 App.aplicar();
+// Si se ha llegado con un enlace directo (#p<id>), se abre esa ficha
+if (idDelHash()) abrirModal(idDelHash(), false);
 setTimeout(avisoNovedades, 1400);
 
 /* Comprobación automática al abrir, como mucho una vez cada 6 horas y en silencio:

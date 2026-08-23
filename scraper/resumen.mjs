@@ -24,7 +24,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 const ficha = (m) => {
   const trozos = [m.anio, (m.directores || [])[0], m.imdb ? `★ ${m.imdb.toFixed(1)}` : null]
     .filter(Boolean).join(' · ');
-  return { titulo: m.titulo || m.tituloOriginal, sub: trozos, url: m.url };
+  // Al catálogo, no a ok.ru: el enlace directo abre la ficha con su sinopsis,
+  // su reproductor y el resto de datos. m.url queda para «ver post».
+  return { titulo: m.titulo || m.tituloOriginal, sub: trozos, url: `${SITIO}/#p${m.id}` };
 };
 
 const lista = nuevas.map(ficha);
