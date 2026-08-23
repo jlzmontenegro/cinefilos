@@ -3,7 +3,10 @@
 import fs from 'node:fs';
 import { crearClasificador } from './clasificar.mjs';
 
-const DIR = '..';
+// Mismo destino que build.mjs: por defecto la carpeta padre, pero en el flujo de
+// GitHub Actions el generado va a DEST, porque en la raíz del repositorio
+// Cinefilos.html es la página de redirección, no el catálogo.
+const DIR = process.env.DEST || '..';
 const C = crearClasificador();
 const orig = JSON.parse(fs.readFileSync('movies.json', 'utf8')).movies;
 
