@@ -138,11 +138,24 @@ jobs:
                  --upload-file correo.eml
             echo "correo enviado a $DESTINO"
           else
+            # Sin credenciales, el aviso va por incidencia. Ojo: abrirla no basta.
+            # GitHub sólo manda correo por una incidencia nueva a quien vigile el
+            # repositorio con «All Activity», y eso no viene puesto por defecto.
+            # Asignarla y mencionar al dueño sí notifica siempre, mire como mire
+            # sus ajustes. Y no se cierra: el correo tarda menos que el cierre.
             echo 'Sin credenciales SMTP: aviso por incidencia de GitHub'
+            duenyo='${{ github.repository_owner }}'
+            # Cerrar el resumen de la semana pasada para no acumular lista
+            viejas=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+                       --label resumen --json number --jq '.[].number' || true)
+            for n in $viejas; do gh issue close "$n" --repo "$GITHUB_REPOSITORY" >/dev/null || true; done
+            gh label create resumen --repo "$GITHUB_REPOSITORY" \
+               --color FFC400 --description 'Resumen semanal del catálogo' >/dev/null 2>&1 || true
+            { echo "cc @$duenyo"; echo; cat resumen.md; } > cuerpo.md
             url=$(gh issue create --repo "$GITHUB_REPOSITORY" \
-                    --title "Cinefilos · resumen semanal" --body-file resumen.md)
+                    --title "Cinefilos · novedades del $(date +%d/%m/%Y)" \
+                    --body-file cuerpo.md --label resumen --assignee "$duenyo")
             echo "incidencia: $url"
-            gh issue close "$url" >/dev/null   # el correo ya salió; no dejamos lista abierta
           fi
 
       # En el disco del proyecto el catálogo se llama Cinefilos.html; en el sitio
