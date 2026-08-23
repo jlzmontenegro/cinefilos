@@ -9,6 +9,7 @@ name: Catálogo
 on:
   schedule:
     - cron: '17 6 * * *'      # cada día: buscar novedades
+    - cron: '11 12 * * 5'     # viernes: novedades + resumen por correo
     - cron: '13 4 * * 0'      # cada domingo: mantenimiento de los pósters
   workflow_dispatch:
     inputs:
@@ -16,7 +17,7 @@ on:
         description: 'Qué hacer'
         type: choice
         default: novedades
-        options: [novedades, posters, posters-todas, publicar]
+        options: [novedades, resumen, posters, posters-todas, publicar]
   push:
     branches: [main]
     paths:
@@ -25,6 +26,7 @@ on:
 
 permissions:
   contents: write      # para devolver raw.jsonl actualizado
+  issues: write        # para el resumen semanal cuando no hay credenciales SMTP
   pages: write
   id-token: write
 
@@ -59,6 +61,8 @@ jobs:
             modo="${{ inputs.modo }}"
           elif [ "${{ github.event.schedule }}" = "13 4 * * 0" ]; then
             modo=posters
+          elif [ "${{ github.event.schedule }}" = "11 12 * * 5" ]; then
+            modo=resumen
           elif [ "${{ github.event_name }}" = "push" ]; then
             modo=publicar
           else
@@ -68,7 +72,7 @@ jobs:
           echo "### Modo: \`$modo\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Buscar novedades en ok.ru
-        if: steps.modo.outputs.modo == 'novedades'
+        if: steps.modo.outputs.modo == 'novedades' || steps.modo.outputs.modo == 'resumen'
         working-directory: scraper
         run: node actualizar.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"
 
@@ -104,6 +108,42 @@ jobs:
       - name: Comprobar que los datos rehidratan bien
         working-directory: scraper
         run: node verificar.mjs
+
+      # Resumen de los viernes. Si están puestas las credenciales SMTP sale un
+      # correo de verdad; si no, se abre y se cierra una incidencia, que GitHub
+      # avisa por correo igual. Así funciona desde el primer día sin configurar
+      # nada, y mejora en cuanto se añaden los secretos.
+      - name: Resumen semanal por correo
+        if: steps.modo.outputs.modo == 'resumen'
+        working-directory: scraper
+        env:
+          DIAS: '7'
+          SITIO: 'https://jlzmontenegro.github.io/cinefilos'
+          DESTINO: ${{ secrets.CORREO_DESTINO }}
+          REMITENTE: ${{ secrets.SMTP_USER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node resumen.mjs
+          cat resumen.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$SMTP_HOST" ] && [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ] && [ -n "$DESTINO" ]; then
+            puerto="${SMTP_PORT:-465}"
+            echo "Enviando por SMTP ($SMTP_HOST:$puerto)"
+            curl -sS --ssl-reqd --url "smtps://$SMTP_HOST:$puerto" \
+                 --user "$SMTP_USER:$SMTP_PASS" \
+                 --mail-from "$SMTP_USER" --mail-rcpt "$DESTINO" \
+                 --upload-file correo.eml
+            echo "correo enviado a $DESTINO"
+          else
+            echo 'Sin credenciales SMTP: aviso por incidencia de GitHub'
+            url=$(gh issue create --repo "$GITHUB_REPOSITORY" \
+                    --title "Cinefilos · resumen semanal" --body-file resumen.md)
+            echo "incidencia: $url"
+            gh issue close "$url" >/dev/null   # el correo ya salió; no dejamos lista abierta
+          fi
 
       # En el disco del proyecto el catálogo se llama Cinefilos.html; en el sitio
       # tiene que ser index.html para que la URL quede limpia. El Cinefilos.html
