@@ -406,7 +406,11 @@ select.sel option{background:#12151f;color:#f2f3f7}
 #modal.open{display:flex}
 #modal .back{position:absolute;inset:0;background:rgba(2,3,8,.72);
   -webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%)}
-#modal .sheet{position:relative;width:min(1020px,100%);max-height:min(92vh,940px);overflow-y:auto;
+/* La ficha sólo se desplaza en vertical. Sin este overflow-x, la fila de
+   recomendadas desbordaba y era la ficha entera la que se movía de lado: el
+   título se salía por la izquierda y quedaba un hueco negro a la derecha. */
+#modal .sheet{position:relative;width:min(1020px,100%);max-height:min(92vh,940px);
+  overflow-y:auto;overflow-x:hidden;
   border-radius:var(--r-panel);scrollbar-width:thin;
   animation:rise .5s var(--ease) both}
 @keyframes rise{from{opacity:0;transform:translateY(38px) scale(.965)}to{opacity:1;transform:none}}
@@ -442,6 +446,9 @@ select.sel option{background:#12151f;color:#f2f3f7}
   border:1px solid var(--stroke);background:rgba(8,10,18,.55);color:#fff;cursor:pointer;font-size:16px;
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);display:grid;place-items:center}
 .close-x:hover{background:rgba(8,10,18,.8)}
+/* Las celdas tienen que poder encogerse por debajo de su contenido; si no, la
+   fila de recomendadas ensancha la rejilla y arrastra toda la ficha. */
+#modal .bd > *{min-width:0}
 .related{display:flex;gap:11px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}
 .related::-webkit-scrollbar{display:none}
 .related .card{width:104px}
@@ -1146,7 +1153,7 @@ function abrirModal(id, autoplay) {
         </dl>
       </div>
     </div>
-    ${rel.length ? `<div class="bd" style="grid-template-columns:1fr;padding-top:0">
+    ${rel.length ? `<div class="bd" style="grid-template-columns:minmax(0,1fr);padding-top:0">
       <div><h3 style="font-size:15px;margin:0 0 12px">También te puede interesar</h3>
       <div class="related">${rel.map(card).join('')}</div></div></div>` : ''}`;
 
