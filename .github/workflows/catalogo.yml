@@ -8,15 +8,15 @@ name: Catálogo
 
 on:
   schedule:
-    - cron: '17 6 * * 1'      # cada lunes: buscar novedades
-    - cron: '13 4 1 8 *'      # cada 1 de agosto: renovar los pósters
+    - cron: '17 6 * * *'      # cada día: buscar novedades
+    - cron: '13 4 * * 0'      # cada domingo: mantenimiento de los pósters
   workflow_dispatch:
     inputs:
       modo:
         description: 'Qué hacer'
         type: choice
         default: novedades
-        options: [novedades, posters, publicar]
+        options: [novedades, posters, posters-todas, publicar]
   push:
     branches: [main]
     paths:
@@ -57,7 +57,7 @@ jobs:
         run: |
           if [ -n "${{ inputs.modo }}" ]; then
             modo="${{ inputs.modo }}"
-          elif [ "${{ github.event.schedule }}" = "13 4 1 8 *" ]; then
+          elif [ "${{ github.event.schedule }}" = "13 4 * * 0" ]; then
             modo=posters
           elif [ "${{ github.event_name }}" = "push" ]; then
             modo=publicar
@@ -72,10 +72,22 @@ jobs:
         working-directory: scraper
         run: node actualizar.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"
 
-      # Dos pasadas a propósito: en la primera se pierden peticiones por la carga y
-      # esas se quedan con el enlace viejo. La segunda sólo mira lo que siga caído.
-      - name: Renovar los enlaces de los pósters
+      # Mantenimiento semanal: renueva lo que ya está caído y, sobre todo, lo que
+      # está a punto de caducar según `imageAt`. Adelantarse evita que se vea
+      # ninguna portada en blanco, y toca unos cientos de registros en vez de los
+      # seis mil (que además meterían 11 MB nuevos en el historial cada semana).
+      - name: Mantenimiento de los pósters
         if: steps.modo.outputs.modo == 'posters'
+        working-directory: scraper
+        env:
+          MANTENIMIENTO: '1'
+          DIAS: '330'
+        run: node refrescar-posters.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"
+
+      # El martillo, sólo a mano: renueva los seis mil. Dos pasadas porque en la
+      # primera se pierden peticiones por la carga y ésas se quedan con el viejo.
+      - name: Renovar TODOS los pósters
+        if: steps.modo.outputs.modo == 'posters-todas'
         working-directory: scraper
         run: |
           node refrescar-posters.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"

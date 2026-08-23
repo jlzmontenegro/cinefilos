@@ -14,9 +14,16 @@
 // pósters que respondían 200 durante la comprobación daban 410 una hora después.
 // Renovarlas todas las deja alineadas y con un año por delante.
 //
-//   node refrescar-posters.mjs                    renueva todas (recomendado)
-//   SOLO_CAIDOS=1 node refrescar-posters.mjs      sólo las que ya fallan (rápido)
+//   node refrescar-posters.mjs                    renueva todas (el martillo)
+//   MANTENIMIENTO=1 node refrescar-posters.mjs    las caídas + las que van a caer
+//   SOLO_CAIDOS=1 node refrescar-posters.mjs      sólo las que ya fallan
 //   SOLO_COMPROBAR=1 node refrescar-posters.mjs   sólo informa, no escribe
+//
+// MANTENIMIENTO es el modo para ejecutar a menudo: como cada renovación deja
+// anotado en `imageAt` cuándo se pidió el enlace, se puede renovar por adelantado
+// lo que esté cerca del año (DIAS, 330 por defecto) en vez de esperar a que se
+// rompa. Así nunca se ve una portada en blanco y se tocan unos cientos de
+// registros en vez de los seis mil.
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fetchHead, parseTopic, sleep, GROUP } from './lib.mjs';
@@ -24,6 +31,8 @@ import { fetchHead, parseTopic, sleep, GROUP } from './lib.mjs';
 const OUT = 'raw.jsonl';
 const SOLO_COMPROBAR = !!process.env.SOLO_COMPROBAR;
 const SOLO_CAIDOS = !!process.env.SOLO_CAIDOS;
+const MANTENIMIENTO = !!process.env.MANTENIMIENTO;
+const DIAS = Number(process.env.DIAS || 330);
 const CONCURRENCIA = 6;
 
 if (!fs.existsSync(OUT)) {
@@ -72,7 +81,7 @@ const conImagen = registros.filter(r => r.image);
 console.log(`${registros.length} publicaciones · ${conImagen.length} con imagen guardada`);
 
 let porRenovar = conImagen;
-if (SOLO_COMPROBAR || SOLO_CAIDOS) {
+if (SOLO_COMPROBAR || SOLO_CAIDOS || MANTENIMIENTO) {
   console.log('\nComprobando cuáles siguen vivas…');
   let hechas = 0;
   const estados = await enTandas(conImagen, CONCURRENCIA, async (r) => {
@@ -81,10 +90,26 @@ if (SOLO_COMPROBAR || SOLO_CAIDOS) {
     return viva;
   });
   const dudosas = conImagen.filter((_, i) => estados[i] === null).length;
-  porRenovar = conImagen.filter((_, i) => estados[i] === false);
+  const caidas = conImagen.filter((_, i) => estados[i] === false);
   console.log(`\nvivas: ${estados.filter(v => v === true).length}` +
-    ` · caídas: ${porRenovar.length}` + (dudosas ? ` · sin respuesta: ${dudosas}` : ''));
+    ` · caídas: ${caidas.length}` + (dudosas ? ` · sin respuesta: ${dudosas}` : ''));
   if (SOLO_COMPROBAR) { console.log('\n(SOLO_COMPROBAR: no se ha escrito nada)'); process.exit(0); }
+
+  if (MANTENIMIENTO) {
+    // Adelantarse: lo que se pidió hace casi un año está a punto de dar 410.
+    const limite = Date.now() - DIAS * 864e5;
+    const juntas = new Set(caidas);
+    let porEdad = 0;
+    for (const r of conImagen) {
+      const t = Date.parse(r.imageAt || '');
+      if (Number.isFinite(t) && t < limite && !juntas.has(r)) { juntas.add(r); porEdad++; }
+    }
+    porRenovar = [...juntas];
+    console.log(`a punto de caducar (más de ${DIAS} días): ${porEdad}` +
+      ` · total a renovar: ${porRenovar.length}`);
+  } else {
+    porRenovar = caidas;
+  }
 }
 
 if (!porRenovar.length) { console.log('\nNo hay nada que refrescar.'); process.exit(0); }
@@ -99,7 +124,11 @@ await enTandas(porRenovar, CONCURRENCIA, async (r) => {
     if (status === 404) { perdidas++; return; }
     const nuevo = parseTopic(html);
     if (nuevo?.image && nuevo.image !== r.image) {
-      porId.get(r.id).image = nuevo.image;
+      const reg = porId.get(r.id);
+      reg.image = nuevo.image;
+      // Cuándo se pidió este enlace: es lo que permite renovar por adelantado
+      // en lugar de esperar a que se rompa.
+      reg.imageAt = new Date().toISOString();
       arregladas++;
     } else {
       sinImagen++;
