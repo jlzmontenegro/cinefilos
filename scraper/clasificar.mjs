@@ -176,9 +176,35 @@ export function crearClasificador() {
   // Formato dominante: "Título original (Traducción) - AÑO - Director(es) (notas)"
   function parseTitulo(linea) {
     const L = clean(linea);
-    const m = /^(.*?)\s[-–—]\s((?:19|20)\d{2})(?:\s*[-–—]\s*(.*))?$/.exec(L);
+
+    // El año no siempre viene solo. Las series suelen listar todas sus temporadas
+    // ("- 2020, 2021 y 2022 -") o un rango ("- 1990-1995 -"). Antes nada de eso
+    // encajaba y la cabecera entera se quedaba como título, así que salían fichas
+    // sin año, sin director y con un título de cuatro líneas.
+    // Ojo: la lista NO puede separarse con guion. Hay títulos que llevan dentro un
+    // rango de años ("In Search of Darkness 1995-1999", "Wartorn: 1861-2010") y
+    // admitir el guion aquí se los comía, dejando el título a medias y el año mal.
+    const ANIOS = '(?:19|20)\\d{2}(?:\\s*(?:,|y|&)\\s*(?:19|20)\\d{2})*';
+
+    // El guion que separa título de año tiene que llevar espacio en algún lado.
+    // Con espacio a ambos lados se perdían cabeceras escritas ")- 2019"; sin exigir
+    // ninguno, "1995-1999" pasaba por separador y partía el título. Pedir al menos
+    // uno acepta lo primero y rechaza lo segundo.
+    const SEP = '(?:\\s+[-–—]\\s*|\\s*[-–—]\\s+)';
+
+    // Primero el formato bueno, con guion delante del año. Sólo si falla se admite
+    // la variante escrita con espacios ("Druk (Una ronda más)  2020 - Vinterberg"),
+    // que exige guion *después* del año para no tragarse cualquier cifra suelta.
+    const m = new RegExp(`^(.*?)${SEP}(${ANIOS})(?:${SEP}(.*))?$`).exec(L)
+           || new RegExp(`^(.*?)\\s+(${ANIOS})${SEP}(.*)$`).exec(L);
+
     let titulo = L, anio = null, resto = '';
-    if (m) { titulo = clean(m[1]); anio = parseInt(m[2], 10); resto = clean(m[3] || ''); }
+    // De una lista de años se guarda el primero: es cuando empezó la obra.
+    if (m) {
+      titulo = clean(m[1]);
+      anio = parseInt(/(?:19|20)\d{2}/.exec(m[2])[0], 10);
+      resto = clean(m[3] || '');
+    }
 
     let director = resto, notas = '';
     const nm = /^(.*?)\s*\(([^()]*)\)\s*$/.exec(resto);
