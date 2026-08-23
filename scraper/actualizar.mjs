@@ -21,7 +21,14 @@ console.log(`Catálogo actual: ${conocidos.size} posts. Más reciente: ${ancla.p
 const nuevos = [];
 const visitados = new Set();
 const desde = String(ancla.published || '');
-let cursor = ancla.prevId;
+
+// El prevId guardado no sirve como punto de partida: ok.ru coloca los mensajes
+// fijados al principio de la cadena, así que el que se guardó puede apuntar a una
+// publicación antigua y el recorrido se corta en el primer salto sin encontrar
+// nada. Hay que releer el ancla para saber cuál es *ahora* la siguiente. Es lo que
+// ya hacía la versión del navegador; esta se había quedado atrás.
+const { html: htmlAncla } = await fetchHead(`https://ok.ru/${GROUP}/topic/${ancla.id}`);
+let cursor = parseTopic(htmlAncla)?.prevId;
 let saltos = 0;
 
 while (cursor && saltos < 3000) {
