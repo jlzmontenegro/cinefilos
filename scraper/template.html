@@ -1075,7 +1075,6 @@ function abrirModal(id, autoplay) {
           ${m.videoId ? `<button class="btn-primary" data-play="${m.videoId}">▶ Reproducir</button>` : ''}
           ${m.embed ? `<a class="btn-ghost" href="${esc(m.embed)}" target="_blank" rel="noopener">Fuente alternativa ↗</a>` : ''}
           <button class="btn-ghost" data-fav="${m.id}">${FAVS.has(m.id) ? '♥ En mi lista' : '♡ Mi lista'}</button>
-          <a class="btn-ghost" href="${esc(m.url)}" target="_blank" rel="noopener">Ver post ↗</a>
         </div>
         <div id="player">${''}</div>
         <p class="syn">${esc(m.sinopsis || 'Sin sinopsis disponible.')}</p>
