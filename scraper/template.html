@@ -664,19 +664,14 @@ const DB = (() => {
 })();
 const META = DB.meta;
 
-/* Novedades que el propio catálogo ha descargado desde la última reconstrucción.
-   Viven en el navegador y se funden con los datos incrustados en el archivo. */
-const DELTA = (() => {
-  try { return JSON.parse(localStorage.getItem('cm.delta')) || []; } catch { return []; }
-})();
+/* Los títulos que no estaban la última vez que se abrió el catálogo. Se calcula
+   en el navegador comparando con lo ya visto, así que cada visitante ve los suyos. */
 /* Sólo se puede ver algo si hay reproducción directa (videoId) o al menos una
    fuente alternativa (embed). Lo demás es una ficha sin película detrás, así que
    se queda fuera del catálogo: fuera de las cifras, de los filtros y del buscador. */
 const reproducible = m => !!(m && (m.videoId || m.embed));
 const M = (() => {
-  const base = new Set(DB.movies.map(m => m.id));
-  return [...DB.movies, ...DELTA.filter(d => d && d.id && !base.has(d.id))]
-    .filter(reproducible)
+  return DB.movies.filter(reproducible)
     .sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
 })();
 
@@ -687,6 +682,10 @@ const fold = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hhmm = s => { if (!s) return null; const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`; };
 const fecha = iso => { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' }); };
+
+// Restos de la sincronización que hacía el propio navegador, ya retirada: el
+// catálogo se actualiza solo en el servidor. Se borra para no dejar basura.
+try { localStorage.removeItem('cm.delta'); localStorage.removeItem('cm.ultimaSync'); } catch {}
 
 const LS = {
   get(k, d) { try { return JSON.parse(localStorage.getItem('cm.' + k)) ?? d; } catch { return d; } },
@@ -1406,35 +1405,6 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* ============ actualización desde el propio catálogo ============
-   Un archivo abierto con file:// no puede leer ok.ru por su cuenta: el navegador lo
-   impide por CORS y ok.ru no envía cabeceras que lo permitan. La única vía que no
-   obliga a instalar nada es un proxy público que reenvíe la página añadiendo
-   Access-Control-Allow-Origin. Es un servicio gratuito y falla a menudo (~1 de cada
-   3 peticiones), así que cada descarga se reintenta y el recorrido es reanudable:
-   lo que se llegó a bajar queda guardado aunque el resto falle.
-   Si el proxy desaparece, esto deja de funcionar y queda "Actualizar catálogo.cmd",
-   que va directo a ok.ru y no depende de terceros. */
-const PROXY = (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
-const TOPE_EN_PAGINA = 60;   // más allá de esto, el .cmd es mucho más rápido
-
-async function traer(url, intentos = 4) {
-  for (let i = 0; i < intentos; i++) {
-    const ctrl = new AbortController();
-    const reloj = setTimeout(() => ctrl.abort(), 30000);
-    try {
-      const r = await fetch(PROXY(url), { signal: ctrl.signal });
-      clearTimeout(reloj);
-      if (r.ok) {
-        const txt = await r.text();
-        if (txt.includes('application/ld+json')) return txt;
-      }
-    } catch { clearTimeout(reloj); }
-    await new Promise(r => setTimeout(r, 1500 * (i + 1)));
-  }
-  return null;
-}
-
 function aviso(texto, ms = 4000, accion = null) {
   const t = $('#toast');
   t.innerHTML = `<span>${texto}</span>` + (accion ? `<button id="t-act">${accion.txt}</button>` : '') +
@@ -1444,76 +1414,6 @@ function aviso(texto, ms = 4000, accion = null) {
   if (accion) $('#t-act').onclick = () => { t.classList.remove('on'); accion.fn(); };
   clearTimeout(aviso._t);
   if (ms) aviso._t = setTimeout(() => t.classList.remove('on'), ms);
-}
-
-let sincronizando = false;
-async function buscarNovedades({ silencioso = false } = {}) {
-  if (sincronizando) return;
-  sincronizando = true;
-  // el botón de sincronizar ya no está en la barra; la comprobación es automática
-  $('#btn-sync')?.classList.add('activo');
-  const nuevos = [];
-  let cortadoPorTope = false;
-
-  try {
-    // Partimos del título más reciente que ya tenemos y subimos por la cadena
-    // rel="prev", que apunta siempre a la publicación inmediatamente posterior.
-    if (!silencioso) aviso('Buscando novedades en ok.ru…', 0);
-    const ancla = M[0];
-    const primera = await traer(`https://ok.ru/cinefiliamalversa/topic/${ancla.id}`);
-    if (!primera) {
-      if (!silencioso) aviso('El servicio intermediario no responde. El catálogo sigue completo.',
-        12000, { txt: 'Reintentar', fn: () => buscarNovedades({}) });
-      return;
-    }
-    let cursor = C.parseTopicHTML(primera)?.prevId;
-    const conocidos = new Set(M.map(m => m.id));
-    const visitados = new Set();
-    const desde = String(ancla.fecha || '');
-
-    while (cursor) {
-      if (nuevos.length >= TOPE_EN_PAGINA) { cortadoPorTope = true; break; }
-      if (visitados.has(cursor)) break;   // la cadena se ha cerrado sobre sí misma
-      visitados.add(cursor);
-      if (!silencioso) aviso(`Descargando novedades… ${nuevos.length} encontradas`, 0);
-      const h = await traer(`https://ok.ru/cinefiliamalversa/topic/${cursor}`);
-      if (!h) break;                      // se corta: lo recogido se guarda igual
-      const crudo = C.parseTopicHTML(h);
-      if (!crudo || !crudo.id) break;
-
-      // ok.ru coloca los mensajes fijados al principio de la cadena, así que
-      // subir por prev puede llevar a un post antiguo. Cualquier publicación que
-      // no sea posterior al ancla significa que ya estamos en terreno conocido.
-      if (crudo.published && String(crudo.published) <= desde) break;
-
-      if (!conocidos.has(crudo.id)) {
-        const peli = C.construirPelicula(crudo);
-        // sin vídeo ni fuente alternativa no entra, pero se marca como visto
-        if (peli && reproducible(peli)) nuevos.push(peli);
-        conocidos.add(crudo.id);
-      }
-      if (!crudo.prevId || crudo.prevId === crudo.id) break;
-      cursor = crudo.prevId;
-    }
-  } finally {
-    sincronizando = false;
-    $('#btn-sync')?.classList.remove('activo');
-    LS.set('ultimaSync', Date.now());
-  }
-
-  if (!nuevos.length) {
-    if (!silencioso) aviso('El catálogo ya está al día', 3500);
-    return;
-  }
-  try {
-    localStorage.setItem('cm.delta', JSON.stringify([...DELTA, ...nuevos]));
-  } catch {
-    aviso('Hay demasiadas novedades para guardarlas en el navegador. Ejecuta «Actualizar catálogo.cmd».', 9000);
-    return;
-  }
-  aviso(`${nuevos.length} título${nuevos.length === 1 ? '' : 's'} nuevo${nuevos.length === 1 ? '' : 's'}` +
-    (cortadoPorTope ? ' (hay más: usa el .cmd)' : '') + '. Actualizando…', 0);
-  setTimeout(() => location.reload(), 1600);
 }
 
 /* ---------- aviso de novedades ---------- */
@@ -1529,7 +1429,8 @@ function avisoNovedades() {
 }
 
 /* ---------- arranque ---------- */
-$('#stamp').textContent = `${M.length.toLocaleString('es')} títulos · act. ${fecha(LS.get('ultimaSync', 0) || META.generado)}`;
+// La fecha es la de la reconstrucción: ya no hay sincronización en el navegador
+$('#stamp').textContent = `${M.length.toLocaleString('es')} títulos · act. ${fecha(META.generado)}`;
 $('#new-count').textContent = NOVEDADES.size;
 $('#btn-new').style.display = NOVEDADES.size ? '' : 'none';
 construirHero();
@@ -1541,11 +1442,6 @@ App.aplicar();
 if (idDelHash()) abrirModal(idDelHash(), false);
 setTimeout(avisoNovedades, 1400);
 
-/* Comprobación automática al abrir, como mucho una vez cada 6 horas y en silencio:
-   si el proxy falla no se muestra nada y el catálogo sigue funcionando igual. */
-if (navigator.onLine && Date.now() - (LS.get('ultimaSync', 0) || 0) > 6 * 3600e3) {
-  setTimeout(() => buscarNovedades({ silencioso: true }), 5000);
-}
 </script>
 </body>
 </html>
