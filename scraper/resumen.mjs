@@ -125,7 +125,9 @@ const cuerpo = `<!doctype html>
     <tr><td style="background:#ffc400;border-radius:16px 16px 0 0;padding:22px 24px">
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>
         <td>
-          <div style="font-size:19px;font-weight:800;color:#0a0a0a;letter-spacing:-.02em">Cinefilos</div>
+          <!-- en versales y con aire entre letras, como la marca del catálogo -->
+          <div style="font-size:17px;font-weight:800;color:#0a0a0a;
+               text-transform:uppercase;letter-spacing:.14em">Cinefilos</div>
           <div style="font-size:12.5px;color:#0a0a0a;opacity:.72;margin-top:2px">
             Novedades del ${desde} al ${hasta}</div>
         </td>
