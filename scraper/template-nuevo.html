@@ -70,12 +70,10 @@ body{
   background:color-mix(in srgb, var(--bg-0) 72%, transparent);
   -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
   border-bottom:1px solid var(--stroke-soft)}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em;
-  font-size:15px;white-space:nowrap;cursor:pointer;user-select:none}
-.brand .dot{width:12px;height:12px;border-radius:50%;
-  background:linear-gradient(140deg,var(--accent),var(--accent-2));
-  box-shadow:0 0 18px 2px color-mix(in srgb,var(--accent) 60%,transparent)}
-.brand small{display:block;font-weight:500;font-size:10.5px;color:var(--txt-faint);letter-spacing:.02em}
+/* En versales el nombre necesita aire entre letras: apretado se lee peor. */
+.brand{display:flex;align-items:center;font-weight:800;font-size:15px;
+  text-transform:uppercase;letter-spacing:.14em;
+  white-space:nowrap;cursor:pointer;user-select:none}
 
 .search-wrap{flex:1 1 200px;min-width:150px;max-width:560px;position:relative;margin-inline:auto}
 #q{width:100%;height:40px;border-radius:var(--r-pill);border:1px solid var(--stroke);
@@ -500,7 +498,6 @@ select.sel option{background:#12151f;color:#f2f3f7}
 }
 @media(max-width:900px){
   :root{--nav-h:58px}
-  .brand small{display:none}
   #hero{min-height:340px}
   #hero .inner{max-width:100%}
   #modal{padding:0}
@@ -514,8 +511,8 @@ select.sel option{background:#12151f;color:#f2f3f7}
   :root{--nav-h:104px; --cw:clamp(116px,35vw,150px)}
   #nav{flex-wrap:wrap;height:auto;min-height:var(--nav-h);
        align-content:center;gap:9px;padding-block:9px}
-  .brand{margin-right:auto}
-  .brand span.name{display:none}
+  /* El nombre se queda también en el móvil, sólo que más pequeño */
+  .brand{margin-right:auto;font-size:13px;letter-spacing:.12em}
   .search-wrap{order:9;flex:1 0 100%;max-width:none;margin-inline:0}
   #hero{min-height:0}
   #hero .cta .btn-ghost{display:none}
@@ -540,15 +537,13 @@ select.sel option{background:#12151f;color:#f2f3f7}
      recuadro guarda la proporción 2:3 del póster y la imagen entra entera. Con
      `auto` mandaba el ancho nativo del archivo (209 px) y `cover` recortaba una
      cuarta parte de los lados. */
+  /* `order` lo manda al final y `margin-left:auto` lo empuja contra el canto
+     derecho; el texto se queda a la izquierda, sobre la parte oscura del velo. */
   #hero .cartel{position:static;align-self:stretch;flex:0 0 auto;
+    order:2;margin-left:auto;
     width:calc(clamp(300px,42vw,440px) * 2 / 3);height:auto;transform:none;
-    border:0;border-right:1px solid var(--stroke-soft);border-radius:0;box-shadow:none}
+    border:0;border-left:1px solid var(--stroke-soft);border-radius:0;box-shadow:none}
   #hero .inner{max-width:min(640px,62%)}
-  /* Con el cartel a la izquierda, la parte oscura del velo tiene que estar a la
-     derecha, que es donde ahora vive el texto. */
-  #hero .scrim{background:
-    linear-gradient(282deg,rgba(3,5,10,.94) 0%,rgba(3,5,10,.7) 46%,rgba(3,5,10,.1) 82%),
-    linear-gradient(0deg,rgba(3,5,10,.88),transparent 58%)}
 }
 @media(max-width:900px){
   /* estrecho: la carátula se ancla arriba a la derecha, más pequeña, y el texto
@@ -580,10 +575,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
 <div id="ambient"><div class="orb a"></div><div class="orb b"></div><div class="grain"></div></div>
 
 <nav id="nav">
-  <div class="brand" onclick="App.home()">
-    <span class="dot"></span>
-    <span class="name">Cinefilos<small id="stamp"></small></span>
-  </div>
+  <div class="brand" onclick="App.home()"><span class="name">Cinefilos</span></div>
   <div class="search-wrap">
     <span class="ic">⌕</span>
     <input id="q" type="search" placeholder="Buscar película, director, país, año…" autocomplete="off" spellcheck="false">
@@ -1590,8 +1582,6 @@ function avisoNovedades() {
 }
 
 /* ---------- arranque ---------- */
-// La fecha es la de la reconstrucción: ya no hay sincronización en el navegador
-$('#stamp').textContent = `${M.length.toLocaleString('es')} títulos · act. ${fecha(META.generado)}`;
 $('#new-count').textContent = NOVEDADES.size;
 $('#btn-new').style.display = NOVEDADES.size ? '' : 'none';
 construirHero();
