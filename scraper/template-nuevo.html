@@ -532,8 +532,23 @@ select.sel option{background:#12151f;color:#f2f3f7}
    especificidad, gana la que se escriba después. Puesto antes, el texto se metía
    por debajo de la carátula. */
 @media(min-width:901px){
-  /* con sitio de sobra, el texto simplemente se recoge */
-  #hero .inner{max-width:min(620px,56%)}
+  /* El cartel deja de flotar encima y pasa a ser una columna del héroe: se estira
+     de arriba abajo pegado al canto izquierdo, y su ancho lo marca la proporción
+     del póster. Así el texto se coloca al lado solo, sin tener que adivinar
+     cuánto hay que apartarlo. */
+  /* El ancho se calcula desde la altura del héroe, no se deja en `auto`: así el
+     recuadro guarda la proporción 2:3 del póster y la imagen entra entera. Con
+     `auto` mandaba el ancho nativo del archivo (209 px) y `cover` recortaba una
+     cuarta parte de los lados. */
+  #hero .cartel{position:static;align-self:stretch;flex:0 0 auto;
+    width:calc(clamp(300px,42vw,440px) * 2 / 3);height:auto;transform:none;
+    border:0;border-right:1px solid var(--stroke-soft);border-radius:0;box-shadow:none}
+  #hero .inner{max-width:min(640px,62%)}
+  /* Con el cartel a la izquierda, la parte oscura del velo tiene que estar a la
+     derecha, que es donde ahora vive el texto. */
+  #hero .scrim{background:
+    linear-gradient(282deg,rgba(3,5,10,.94) 0%,rgba(3,5,10,.7) 46%,rgba(3,5,10,.1) 82%),
+    linear-gradient(0deg,rgba(3,5,10,.88),transparent 58%)}
 }
 @media(max-width:900px){
   /* estrecho: la carátula se ancla arriba a la derecha, más pequeña, y el texto
