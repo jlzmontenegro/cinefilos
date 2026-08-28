@@ -121,12 +121,28 @@ body{
 /* El vitral: las destacadas como láminas de vidrio en perspectiva. La de delante
    se ve de frente y a todo color; las de los lados quedan giradas, apagadas y
    detrás, como fichas en un tarjetero. Sirve de cartel y de control a la vez. */
-/* `align-self:stretch` y nada de altura en porcentaje: el héroe se dimensiona con
+/* Las flechas van fuera del vitral, en un envoltorio sin `preserve-3d`: dentro
+   competirían en profundidad con las láminas y quedarían tapadas.
+   `align-self:stretch` y nada de altura en porcentaje: el héroe se dimensiona con
    `min-height`, así que un `height:%` aquí no resuelve y el contenedor se quedaba
    con altura cero — las láminas se amontonaban arriba. */
-#hero .vitral{position:relative;flex:0 0 auto;align-self:stretch;z-index:1;
-  width:clamp(250px,36vw,380px);
+#hero .vitral-wrap{position:relative;flex:0 0 auto;align-self:stretch;z-index:1;
+  width:clamp(250px,36vw,380px);display:flex;align-items:center}
+#hero .vitral{position:relative;width:100%;height:100%;
   perspective:1100px;transform-style:preserve-3d}
+/* Sólo el signo, sin botón alrededor: la sombra basta para que se lea también
+   cuando cae sobre una carátula clara. */
+#hero .v-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:3;
+  width:30px;height:46px;padding:0;border:0;background:none;cursor:pointer;
+  display:grid;place-items:center;
+  color:rgba(255,255,255,.6);font-size:30px;line-height:1;
+  text-shadow:0 2px 12px rgba(0,0,0,.8);
+  opacity:0;transition:opacity .25s,color .2s,transform .2s var(--ease)}
+#hero:hover .v-btn,#hero .v-btn:focus-visible{opacity:1}
+#hero .v-btn:hover{color:#fff;transform:translateY(-50%) scale(1.18)}
+#hero .v-btn.l{left:-8px} #hero .v-btn.r{right:-8px}
+/* Sin ratón no hay hover que valga: en táctil se ven siempre */
+@media(hover:none){#hero .v-btn{opacity:.85}}
 #hero .lamina{position:absolute;left:50%;top:50%;margin:0;padding:0;cursor:pointer;
   width:clamp(120px,19vw,210px);aspect-ratio:2/3;border-radius:10px;overflow:hidden;
   background:#0d1018;border:1px solid rgba(255,255,255,.18);
@@ -550,7 +566,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
 @media(min-width:901px){
   /* El cartel deja de flotar encima y pasa a ser una columna del héroe: se estira
      el vitral se coloca a la derecha y el texto se recoge para dejarle sitio. */
-  #hero .vitral{order:2;margin-left:auto;margin-right:clamp(10px,2vw,28px)}
+  #hero .vitral-wrap{order:2;margin-left:auto;margin-right:clamp(10px,2vw,28px)}
   #hero .inner{max-width:min(600px,54%)}
 }
 @media(max-width:900px){
@@ -558,7 +574,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
      que se ve— y debajo el título y lo demás. De lado no cabrían tres láminas
      sin comerse el título. */
   #hero{flex-direction:column;align-items:stretch;min-height:0}
-  #hero .vitral{order:0;align-self:center;width:min(100%,340px);
+  #hero .vitral-wrap{order:0;align-self:center;width:min(100%,340px);
     height:clamp(200px,46vw,260px);margin:clamp(18px,5vw,26px) auto 0}
   #hero .inner{padding-top:clamp(14px,4vw,20px)}
 }
@@ -602,7 +618,11 @@ select.sel option{background:#12151f;color:#f2f3f7}
 
 <section id="hero" hidden>
   <div class="bg"></div><div class="scrim"></div>
-  <div class="vitral" id="hero-vitral" role="tablist" aria-label="Películas destacadas"></div>
+  <div class="vitral-wrap">
+    <button class="v-btn l" onclick="App.heroPasar(-1)" aria-label="Anterior destacada">‹</button>
+    <div class="vitral" id="hero-vitral" role="tablist" aria-label="Películas destacadas"></div>
+    <button class="v-btn r" onclick="App.heroPasar(1)" aria-label="Siguiente destacada">›</button>
+  </div>
   <div class="inner">
     <div class="eyebrow"><span id="hero-eyebrow">Destacada</span></div>
     <h1 id="hero-title"></h1>
@@ -1424,6 +1444,14 @@ const App = {
     $('#q').focus(); scrollTo({ top: 0, behavior: 'smooth' });
   },
   arriba() { scrollTo({ top: 0, behavior: 'smooth' }); },
+  /* Flechas del héroe. Da la vuelta por los dos lados, y al usarlas se reinicia
+     la cuenta para que no salte sola justo después de que elijas tú. */
+  heroPasar(paso) {
+    const n = heroList.length; if (!n) return;
+    pintarHero((heroI + paso + n) % n);
+    clearInterval(heroTimer);
+    heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), HERO_MS);
+  },
   // También se llega desde fuera con .../cinefilos/#cafe, que es a donde apunta
   // el correo de los viernes: allí la llave se puede copiar de un toque.
   /* En móvil y en buena parte de los escritorios existe el menú de compartir del
