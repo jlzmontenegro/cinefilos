@@ -145,10 +145,14 @@ body{
   -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
   display:inline-flex;align-items:center;gap:9px;transition:transform .18s var(--ease),background .2s}
 .btn-ghost:hover{background:var(--glass-hi);transform:translateY(-2px)}
-#hero .dots{position:absolute;right:clamp(16px,3vw,32px);bottom:clamp(16px,3vw,32px);display:flex;gap:7px;z-index:2}
-#hero .dots i{width:7px;height:7px;border-radius:50%;background:var(--stroke);cursor:pointer;
-  transition:all .3s var(--ease)}
-#hero .dots i.on{width:24px;border-radius:var(--r-pill);background:var(--accent)}
+/* Los puntos van dentro de la columna de texto, no flotando abajo a la derecha:
+   ahí caían justo encima del cartel y, siendo blancos translúcidos, sobre una
+   carátula clara no se veían. Aquí siempre están sobre la parte oscura. */
+#hero .dots{display:flex;gap:8px;margin-top:14px}
+#hero .dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);
+  cursor:pointer;transition:all .3s var(--ease)}
+#hero .dots i:hover{background:rgba(255,255,255,.55)}
+#hero .dots i.on{width:26px;border-radius:var(--r-pill);background:var(--accent)}
 
 /* ------------------------------- CHIPS ---------------------------------- */
 .chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 11px;
@@ -603,8 +607,8 @@ select.sel option{background:#12151f;color:#f2f3f7}
       <button class="btn-primary" id="hero-play">▶ Ver ahora</button>
       <button class="btn-ghost" id="hero-info">Más información</button>
     </div>
+    <div class="dots" id="hero-dots"></div>
   </div>
-  <div class="dots" id="hero-dots"></div>
 </section>
 
 <main>
