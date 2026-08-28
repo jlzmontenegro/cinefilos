@@ -125,6 +125,8 @@ body{
 #hero .cartel img{width:100%;height:100%;object-fit:cover;display:block}
 #hero .cartel[hidden]{display:none!important}
 @media(max-width:900px){#hero .cartel{display:none}}
+/* Con el cartel a la vista, el texto se recoge para no pasarle por debajo */
+@media(min-width:901px){#hero .inner{max-width:min(620px,56%)}}
 #hero .scrim{position:absolute;inset:0;z-index:-1;
   background:linear-gradient(78deg,rgba(3,5,10,.94) 0%,rgba(3,5,10,.72) 42%,rgba(3,5,10,.15) 78%),
              linear-gradient(0deg,rgba(3,5,10,.9),transparent 55%)}
@@ -231,7 +233,8 @@ main{padding:0 0 90px}
   background:linear-gradient(0deg,rgba(4,6,12,.94) 8%,rgba(4,6,12,.66) 48%,transparent);
   opacity:.94;transition:opacity .3s var(--ease)}
 .card:hover .foot{opacity:1}
-.card .foot b{display:block;font-size:12.5px;font-weight:650;line-height:1.25;color:#fff;
+.card .foot b{display:block;font-size:13.5px;font-weight:700;line-height:1.22;color:#fff;
+  letter-spacing:-.012em;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card .foot span{display:block;font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -240,27 +243,20 @@ main{padding:0 0 90px}
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;transition:opacity .3s}
 .card:hover .dur{opacity:0}
 
-/* ---------------- FRANJA DE TITULARES (catálogo en cifras) ---------------- */
-#ticker{background:var(--accent);overflow:hidden;position:relative;
-  border-block:1px solid rgba(0,0,0,.22);display:flex;align-items:center;height:34px}
-#ticker .track{display:flex;flex:0 0 auto;align-items:center;white-space:nowrap;
-  animation:correr 46s linear infinite;will-change:transform}
-#ticker:hover .track{animation-play-state:paused}
-@keyframes correr{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-#ticker .tk{display:inline-flex;align-items:center;gap:8px;padding:0 20px;
-  font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--sobre-accent)}
-/* La etiqueta va en blanco sobre una píldora negra: blanco directo sobre
-   amarillo no se lee (contraste ~1.8:1). */
-#ticker .tk i{font-style:normal;background:var(--sobre-accent);color:#fff;
-  padding:3px 9px;border-radius:var(--r-pill);font-size:10px;letter-spacing:.08em}
-#ticker .sep{color:#fff;opacity:.9;font-size:13px;font-weight:900}
-@media(max-width:640px){#ticker{height:30px}#ticker .tk{padding:0 14px;font-size:10.5px}}
+/* ------------------------ EL CATÁLOGO EN CIFRAS -------------------------- */
+.cifras{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 26px;
+  margin-bottom:26px;padding-bottom:24px;border-bottom:1px solid var(--stroke-soft)}
+.cifras span{display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--txt-faint)}
+.cifras b{font-size:19px;font-weight:800;letter-spacing:-.02em;color:var(--txt);
+  text-transform:none;letter-spacing:-.01em}
 
 /* -------------------------------- CIERRE --------------------------------- */
+/* El pie es ancho para que las cifras quepan en una fila; el párrafo se queda
+   estrecho aparte, que una línea de texto larguísima no se lee bien. */
 #cierre{padding:54px clamp(14px,3vw,34px) 40px;text-align:center;
-  font-size:13.5px;line-height:1.7;color:var(--txt-dim);max-width:60ch;margin:0 auto}
-#cierre p{margin:0}
+  font-size:13.5px;line-height:1.7;color:var(--txt-dim);max-width:860px;margin:0 auto}
+#cierre p{margin:0 auto;max-width:56ch}
 /* Apoyo al proyecto: apagado hasta que se pasa por encima, para que esté ahí
    sin pedir nada a gritos. */
 .apoyo{display:inline-flex;align-items:center;gap:8px;margin-top:24px;height:34px;padding:0 16px;
@@ -277,8 +273,10 @@ main{padding:0 0 90px}
 
 /* ------------------------------- REJILLA -------------------------------- */
 #grid-view{padding:0 clamp(14px,3vw,34px)}
-.grid{display:grid;gap:clamp(12px,1.5vw,18px);
-  grid-template-columns:repeat(auto-fill,minmax(clamp(124px,13vw,170px),1fr))}
+/* Más aire y carátulas algo mayores: con imágenes de 202x300 apretarlas sólo
+   hace que se noten pequeñas. Mejor menos por fila y que respiren. */
+.grid{display:grid;gap:clamp(16px,2vw,26px);
+  grid-template-columns:repeat(auto-fill,minmax(clamp(142px,15vw,196px),1fr))}
 .grid .card{width:auto}
 /* Cabecera de resultados: centrada, para que el término buscado y el número de
    coincidencias sean lo primero que se lee al terminar de escribir. */
@@ -438,6 +436,11 @@ select.sel option{background:#12151f;color:#f2f3f7}
   filter:blur(14px) saturate(150%);transform:scale(1.2)}
 #modal .hd .sc{position:absolute;inset:0;background:linear-gradient(0deg,rgba(6,8,16,.97),rgba(6,8,16,.5) 60%,rgba(6,8,16,.3))}
 #modal .hd .in{position:relative;display:flex;gap:20px;padding:22px clamp(18px,2.6vw,30px);width:100%;align-items:flex-end}
+/* Es la que recoge el testigo de la carátula al abrir la ficha */
+#modal.open .poster{view-transition-name:caratula}
+::view-transition-old(caratula),::view-transition-new(caratula){
+  animation-duration:.42s;mix-blend-mode:normal}
+::view-transition-group(caratula){animation-timing-function:cubic-bezier(.22,1,.36,1)}
 #modal .poster{flex:0 0 auto;width:clamp(96px,11vw,142px);aspect-ratio:2/3;border-radius:16px;overflow:hidden;
   box-shadow:var(--shadow-lift);border:1px solid var(--stroke);position:relative;background:#12151f}
 #modal .poster .fill{position:absolute;inset:-14%;background-size:cover;background-position:center;filter:blur(18px)}
@@ -560,7 +563,6 @@ select.sel option{background:#12151f;color:#f2f3f7}
   <button class="nav-btn" onclick="App.openFilters()">⚙ <span class="lbl">Filtros</span> <span class="badge" id="f-count" style="display:none">0</span></button>
 </nav>
 
-<div id="ticker" aria-label="El catálogo en cifras"><div class="track" id="tk-track"></div></div>
 
 <section id="hero" hidden>
   <div class="bg"></div><div class="scrim"></div>
@@ -606,6 +608,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
     <div id="sentinel"></div>
   </div>
   <footer id="cierre">
+    <div class="cifras" id="cifras" aria-label="El catálogo en cifras"></div>
     <p>Si estás viendo esto es porque lo desarrollamos para que te diviertas y disfrutes
     de las mejores películas</p>
     <button class="apoyo" onclick="App.abrirCafe()" title="Apoyar el proyecto">
@@ -931,25 +934,24 @@ function construirFilas() {
   $('#rows-view').innerHTML = html.join('');
 }
 
-/* Franja de titulares con el catálogo en cifras, en marcha continua.
-   El contenido se duplica para que el bucle no dé un salto al reiniciarse. */
+/* Las cifras del catálogo. Antes iban en una franja amarilla que se deslizaba sin
+   parar bajo la barra: mucho ruido y mucho sitio para un dato que se mira una vez.
+   Ahora esperan quietas al final, para quien tenga la curiosidad. */
 function construirTicker() {
   const dirs = new Set(); M.forEach(m => (m.directores || []).forEach(d => dirs.add(d)));
   const horas = Math.round(M.reduce((s, m) => s + (m.duracion || 0), 0) / 3600);
   const decTop = F.decadas.slice().sort((a, b) => b[1] - a[1])[0];
   const stats = [
-    [M.length.toLocaleString('es'), 'Títulos'],
-    [dirs.size.toLocaleString('es'), 'Directores'],
-    [F.paises.length, 'Países'],
-    [F.generos.length, 'Géneros'],
-    [`${ANIO_MIN}–${ANIO_MAX}`, 'Años de cine'],
-    [decTop ? decTop[0] + 's' : '—', 'Década más nutrida'],
-    [horas.toLocaleString('es'), 'Horas de metraje'],
-    [M.filter(m => m.videoId).length.toLocaleString('es'), 'Con reproducción directa'],
+    [M.length.toLocaleString('es'), 'títulos'],
+    [dirs.size.toLocaleString('es'), 'directores'],
+    [F.paises.length, 'países'],
+    [F.generos.length, 'géneros'],
+    [`${ANIO_MIN}–${ANIO_MAX}`, 'años de cine'],
+    [horas.toLocaleString('es'), 'horas de metraje'],
+    [decTop ? decTop[0] + 's' : '—', 'la década más nutrida'],
   ];
-  const tanda = stats.map(([v, k]) =>
-    `<span class="tk">${esc(v)} <i>${esc(k)}</i></span><span class="sep">◆</span>`).join('');
-  $('#tk-track').innerHTML = tanda + tanda;
+  $('#cifras').innerHTML = stats.map(([v, k]) =>
+    `<span><b>${esc(v)}</b>${esc(k)}</span>`).join('');
 }
 
 /* ---------- rejilla con carga progresiva ---------- */
@@ -1076,6 +1078,8 @@ function actualizarContadoresGrupo() {
 }
 
 /* ---------- héroe ---------- */
+// 9 segundos era poco: daba tiempo justo a leer el título y ya cambiaba
+const HERO_MS = 16000;
 let heroList = [], heroI = 0, heroTimer = null;
 function construirHero() {
   heroList = [...M].filter(m => m.poster && m.sinopsis && m.imdb >= 7).slice(0, 40)
@@ -1085,7 +1089,17 @@ function construirHero() {
   $('#hero-dots').innerHTML = heroList.map((_, i) => `<i data-h="${i}" class="${i ? '' : 'on'}"></i>`).join('');
   pintarHero(0);
   clearInterval(heroTimer);
-  heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), 9000);
+  heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), HERO_MS);
+  // Cambiar de portada mientras alguien está leyendo la sinopsis es incómodo:
+  // con el puntero encima, el carrusel espera.
+  const h = $('#hero');
+  h.addEventListener('pointerenter', () => clearInterval(heroTimer));
+  h.addEventListener('pointerleave', () => {
+    clearInterval(heroTimer);
+    if (heroList.length > 1 && !h.hidden) {
+      heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), HERO_MS);
+    }
+  });
 }
 function pintarHero(i) {
   heroI = i;
@@ -1162,9 +1176,29 @@ function redesCompartir(m) {
   </div>`;
 }
 
-/* ---------- detalle ---------- */
-function abrirModal(id, autoplay) {
+/* ---------- detalle ----------
+   Si el navegador sabe hacer transiciones de vista, la carátula sobre la que se
+   pulsa se transforma en la de la ficha en lugar de aparecer de golpe. Donde no
+   exista —o si el sistema pide menos movimiento— se abre como siempre. */
+const menosMovimiento = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function abrirModal(id, autoplay, origen) {
   const m = M.find(x => x.id === id); if (!m) return;
+  if (document.startViewTransition && origen && !menosMovimiento()) {
+    origen.style.viewTransitionName = 'caratula';
+    // Dentro del callback se le quita el nombre a la carátula y se lo queda la
+    // ficha: dos elementos no pueden llamarse igual a la vez o la transición falla.
+    document.startViewTransition(() => {
+      origen.style.viewTransitionName = '';
+      pintarModal(m, autoplay);
+    });
+    return;
+  }
+  pintarModal(m, autoplay);
+}
+
+function pintarModal(m, autoplay) {
+  const id = m.id;
   const img = m.poster || m.thumb || '';
   const rel = M.filter(o => o.id !== m.id && (
     (m.directores || []).some(d => (o.directores || []).includes(d)) ||
@@ -1274,7 +1308,7 @@ const App = {
     // Con el héroe oculto no tiene sentido que siga rotando ni recoloreando el fondo
     if (hay) { clearInterval(heroTimer); heroTimer = null; }
     else if (!heroTimer && heroList.length > 1) {
-      heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), 9000);
+      heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), HERO_MS);
     }
     if (hay) pintarGrid(true); else { pintarChipsActivos(); }
     $('#btn-new').classList.toggle('on', S.soloNuevas);
@@ -1401,7 +1435,7 @@ document.addEventListener('click', e => {
   if (play) { reproducir(play.dataset.play); return; }
 
   const c = t.closest('.card');
-  if (c) { abrirModal(c.dataset.id, false); return; }
+  if (c) { abrirModal(c.dataset.id, false, c.querySelector('img')); return; }
 
   const rail = t.closest('[data-rail]');
   if (rail) {

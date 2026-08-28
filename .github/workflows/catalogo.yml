@@ -166,6 +166,8 @@ jobs:
           mkdir -p _site
           cp "$DEST/Cinefilos.html" _site/index.html
           cp Cinefilos.html _site/Cinefilos.html
+          # Interfaz en pruebas, si la hay: se publica al lado para compararlas
+          [ -f "$DEST/nuevo.html" ] && cp "$DEST/nuevo.html" _site/nuevo.html
           ls -lh _site
 
       - name: Resumir lo que ha cambiado

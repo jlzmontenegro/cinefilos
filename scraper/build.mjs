@@ -53,13 +53,26 @@ const clasificador = fs.readFileSync('clasificar.mjs', 'utf8')
   .replace(/^export\s+/gm, '')
   .replace(/<\/script/gi, '<\\/script');
 
-const html = tpl
+const rellenar = (plantilla) => plantilla
   .replace('__CLASIFICADOR__', () => clasificador)
   .replace('__DATA__', () => data);
-fs.mkdirSync(DEST, { recursive: true });
-const out = path.join(DEST, 'Cinefilos.html');
-fs.writeFileSync(out, html, 'utf8');
 
+fs.mkdirSync(DEST, { recursive: true });
 const { meta } = JSON.parse(fs.readFileSync('movies.json', 'utf8'));
-console.log(`✓ ${out}`);
-console.log(`  ${meta.total.toLocaleString('es')} títulos · ${(html.length / 1048576).toFixed(2)} MB`);
+
+const escribir = (plantilla, nombre) => {
+  const html = rellenar(plantilla);
+  const out = path.join(DEST, nombre);
+  fs.writeFileSync(out, html, 'utf8');
+  console.log(`✓ ${out}`);
+  console.log(`  ${meta.total.toLocaleString('es')} títulos · ${(html.length / 1048576).toFixed(2)} MB`);
+};
+
+const html = rellenar(tpl);
+escribir(tpl, 'Cinefilos.html');
+
+// Interfaz en pruebas, si existe: se publica al lado de la buena para poder
+// compararlas sin tocar la que funciona.
+if (fs.existsSync('template-nuevo.html')) {
+  escribir(fs.readFileSync('template-nuevo.html', 'utf8'), 'nuevo.html');
+}
