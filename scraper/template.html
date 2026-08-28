@@ -70,12 +70,10 @@ body{
   background:color-mix(in srgb, var(--bg-0) 72%, transparent);
   -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
   border-bottom:1px solid var(--stroke-soft)}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em;
-  font-size:15px;white-space:nowrap;cursor:pointer;user-select:none}
-.brand .dot{width:12px;height:12px;border-radius:50%;
-  background:linear-gradient(140deg,var(--accent),var(--accent-2));
-  box-shadow:0 0 18px 2px color-mix(in srgb,var(--accent) 60%,transparent)}
-.brand small{display:block;font-weight:500;font-size:10.5px;color:var(--txt-faint);letter-spacing:.02em}
+/* En versales el nombre necesita aire entre letras: apretado se lee peor. */
+.brand{display:flex;align-items:center;font-weight:800;font-size:15px;
+  text-transform:uppercase;letter-spacing:.14em;
+  white-space:nowrap;cursor:pointer;user-select:none}
 
 .search-wrap{flex:1 1 200px;min-width:150px;max-width:560px;position:relative;margin-inline:auto}
 #q{width:100%;height:40px;border-radius:var(--r-pill);border:1px solid var(--stroke);
@@ -124,7 +122,6 @@ body{
   border:1px solid var(--stroke);background:#12151f;box-shadow:var(--shadow-lift)}
 #hero .cartel img{width:100%;height:100%;object-fit:cover;display:block}
 #hero .cartel[hidden]{display:none!important}
-@media(max-width:900px){#hero .cartel{display:none}}
 #hero .scrim{position:absolute;inset:0;z-index:-1;
   background:linear-gradient(78deg,rgba(3,5,10,.94) 0%,rgba(3,5,10,.72) 42%,rgba(3,5,10,.15) 78%),
              linear-gradient(0deg,rgba(3,5,10,.9),transparent 55%)}
@@ -231,7 +228,8 @@ main{padding:0 0 90px}
   background:linear-gradient(0deg,rgba(4,6,12,.94) 8%,rgba(4,6,12,.66) 48%,transparent);
   opacity:.94;transition:opacity .3s var(--ease)}
 .card:hover .foot{opacity:1}
-.card .foot b{display:block;font-size:12.5px;font-weight:650;line-height:1.25;color:#fff;
+.card .foot b{display:block;font-size:13.5px;font-weight:700;line-height:1.22;color:#fff;
+  letter-spacing:-.012em;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card .foot span{display:block;font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -240,27 +238,20 @@ main{padding:0 0 90px}
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;transition:opacity .3s}
 .card:hover .dur{opacity:0}
 
-/* ---------------- FRANJA DE TITULARES (catálogo en cifras) ---------------- */
-#ticker{background:var(--accent);overflow:hidden;position:relative;
-  border-block:1px solid rgba(0,0,0,.22);display:flex;align-items:center;height:34px}
-#ticker .track{display:flex;flex:0 0 auto;align-items:center;white-space:nowrap;
-  animation:correr 46s linear infinite;will-change:transform}
-#ticker:hover .track{animation-play-state:paused}
-@keyframes correr{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-#ticker .tk{display:inline-flex;align-items:center;gap:8px;padding:0 20px;
-  font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--sobre-accent)}
-/* La etiqueta va en blanco sobre una píldora negra: blanco directo sobre
-   amarillo no se lee (contraste ~1.8:1). */
-#ticker .tk i{font-style:normal;background:var(--sobre-accent);color:#fff;
-  padding:3px 9px;border-radius:var(--r-pill);font-size:10px;letter-spacing:.08em}
-#ticker .sep{color:#fff;opacity:.9;font-size:13px;font-weight:900}
-@media(max-width:640px){#ticker{height:30px}#ticker .tk{padding:0 14px;font-size:10.5px}}
+/* ------------------------ EL CATÁLOGO EN CIFRAS -------------------------- */
+.cifras{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 26px;
+  margin-bottom:26px;padding-bottom:24px;border-bottom:1px solid var(--stroke-soft)}
+.cifras span{display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--txt-faint)}
+.cifras b{font-size:19px;font-weight:800;letter-spacing:-.02em;color:var(--txt);
+  text-transform:none;letter-spacing:-.01em}
 
 /* -------------------------------- CIERRE --------------------------------- */
+/* El pie es ancho para que las cifras quepan en una fila; el párrafo se queda
+   estrecho aparte, que una línea de texto larguísima no se lee bien. */
 #cierre{padding:54px clamp(14px,3vw,34px) 40px;text-align:center;
-  font-size:13.5px;line-height:1.7;color:var(--txt-dim);max-width:60ch;margin:0 auto}
-#cierre p{margin:0}
+  font-size:13.5px;line-height:1.7;color:var(--txt-dim);max-width:860px;margin:0 auto}
+#cierre p{margin:0 auto;max-width:56ch}
 /* Apoyo al proyecto: apagado hasta que se pasa por encima, para que esté ahí
    sin pedir nada a gritos. */
 .apoyo{display:inline-flex;align-items:center;gap:8px;margin-top:24px;height:34px;padding:0 16px;
@@ -277,8 +268,10 @@ main{padding:0 0 90px}
 
 /* ------------------------------- REJILLA -------------------------------- */
 #grid-view{padding:0 clamp(14px,3vw,34px)}
-.grid{display:grid;gap:clamp(12px,1.5vw,18px);
-  grid-template-columns:repeat(auto-fill,minmax(clamp(124px,13vw,170px),1fr))}
+/* Más aire y carátulas algo mayores: con imágenes de 202x300 apretarlas sólo
+   hace que se noten pequeñas. Mejor menos por fila y que respiren. */
+.grid{display:grid;gap:clamp(16px,2vw,26px);
+  grid-template-columns:repeat(auto-fill,minmax(clamp(142px,15vw,196px),1fr))}
 .grid .card{width:auto}
 /* Cabecera de resultados: centrada, para que el término buscado y el número de
    coincidencias sean lo primero que se lee al terminar de escribir. */
@@ -438,6 +431,11 @@ select.sel option{background:#12151f;color:#f2f3f7}
   filter:blur(14px) saturate(150%);transform:scale(1.2)}
 #modal .hd .sc{position:absolute;inset:0;background:linear-gradient(0deg,rgba(6,8,16,.97),rgba(6,8,16,.5) 60%,rgba(6,8,16,.3))}
 #modal .hd .in{position:relative;display:flex;gap:20px;padding:22px clamp(18px,2.6vw,30px);width:100%;align-items:flex-end}
+/* Es la que recoge el testigo de la carátula al abrir la ficha */
+#modal.open .poster{view-transition-name:caratula}
+::view-transition-old(caratula),::view-transition-new(caratula){
+  animation-duration:.42s;mix-blend-mode:normal}
+::view-transition-group(caratula){animation-timing-function:cubic-bezier(.22,1,.36,1)}
 #modal .poster{flex:0 0 auto;width:clamp(96px,11vw,142px);aspect-ratio:2/3;border-radius:16px;overflow:hidden;
   box-shadow:var(--shadow-lift);border:1px solid var(--stroke);position:relative;background:#12151f}
 #modal .poster .fill{position:absolute;inset:-14%;background-size:cover;background-position:center;filter:blur(18px)}
@@ -500,7 +498,6 @@ select.sel option{background:#12151f;color:#f2f3f7}
 }
 @media(max-width:900px){
   :root{--nav-h:58px}
-  .brand small{display:none}
   #hero{min-height:340px}
   #hero .inner{max-width:100%}
   #modal{padding:0}
@@ -514,8 +511,8 @@ select.sel option{background:#12151f;color:#f2f3f7}
   :root{--nav-h:104px; --cw:clamp(116px,35vw,150px)}
   #nav{flex-wrap:wrap;height:auto;min-height:var(--nav-h);
        align-content:center;gap:9px;padding-block:9px}
-  .brand{margin-right:auto}
-  .brand span.name{display:none}
+  /* El nombre se queda también en el móvil, sólo que más pequeño */
+  .brand{margin-right:auto;font-size:13px;letter-spacing:.12em}
   .search-wrap{order:9;flex:1 0 100%;max-width:none;margin-inline:0}
   #hero{min-height:0}
   #hero .cta .btn-ghost{display:none}
@@ -524,6 +521,36 @@ select.sel option{background:#12151f;color:#f2f3f7}
   #modal .hd .in{flex-direction:column;align-items:flex-start}
   #modal .poster{width:88px}
   #cierre{padding:40px 20px 30px}
+}
+
+/* ---- El cartel del héroe ----
+   Va aquí, al final, y no junto al resto de reglas del héroe: `#hero .inner`
+   define su margen con la forma abreviada `padding`, y como tiene la misma
+   especificidad, gana la que se escriba después. Puesto antes, el texto se metía
+   por debajo de la carátula. */
+@media(min-width:901px){
+  /* El cartel deja de flotar encima y pasa a ser una columna del héroe: se estira
+     de arriba abajo pegado al canto izquierdo, y su ancho lo marca la proporción
+     del póster. Así el texto se coloca al lado solo, sin tener que adivinar
+     cuánto hay que apartarlo. */
+  /* El ancho se calcula desde la altura del héroe, no se deja en `auto`: así el
+     recuadro guarda la proporción 2:3 del póster y la imagen entra entera. Con
+     `auto` mandaba el ancho nativo del archivo (209 px) y `cover` recortaba una
+     cuarta parte de los lados. */
+  /* `order` lo manda al final y `margin-left:auto` lo empuja contra el canto
+     derecho; el texto se queda a la izquierda, sobre la parte oscura del velo. */
+  #hero .cartel{position:static;align-self:stretch;flex:0 0 auto;
+    order:2;margin-left:auto;
+    width:calc(clamp(300px,42vw,440px) * 2 / 3);height:auto;transform:none;
+    border:0;border-left:1px solid var(--stroke-soft);border-radius:0;box-shadow:none}
+  #hero .inner{max-width:min(640px,62%)}
+}
+@media(max-width:900px){
+  /* estrecho: la carátula se ancla arriba a la derecha, más pequeña, y el texto
+     reserva su hueco a la derecha */
+  #hero .cartel{width:clamp(74px,21vw,116px);height:auto;
+    top:clamp(16px,4vw,26px);transform:none;border-radius:12px}
+  #hero .inner{padding-right:calc(clamp(74px,21vw,116px) + clamp(26px,6vw,40px))}
 }
 
 /* En pantallas táctiles no existe el estado :hover, así que todo lo que
@@ -548,10 +575,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
 <div id="ambient"><div class="orb a"></div><div class="orb b"></div><div class="grain"></div></div>
 
 <nav id="nav">
-  <div class="brand" onclick="App.home()">
-    <span class="dot"></span>
-    <span class="name">Cinefilos<small id="stamp"></small></span>
-  </div>
+  <div class="brand" onclick="App.home()"><span class="name">Cinefilos</span></div>
   <div class="search-wrap">
     <span class="ic">⌕</span>
     <input id="q" type="search" placeholder="Buscar película, director, país, año…" autocomplete="off" spellcheck="false">
@@ -565,7 +589,6 @@ select.sel option{background:#12151f;color:#f2f3f7}
   <button class="nav-btn" onclick="App.openFilters()">⚙ <span class="lbl">Filtros</span> <span class="badge" id="f-count" style="display:none">0</span></button>
 </nav>
 
-<div id="ticker" aria-label="El catálogo en cifras"><div class="track" id="tk-track"></div></div>
 
 <section id="hero" hidden>
   <div class="bg"></div><div class="scrim"></div>
@@ -611,6 +634,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
     <div id="sentinel"></div>
   </div>
   <footer id="cierre">
+    <div class="cifras" id="cifras" aria-label="El catálogo en cifras"></div>
     <p>Si estás viendo esto es porque lo desarrollamos para que te diviertas y disfrutes
     de las mejores películas</p>
     <button class="apoyo" onclick="App.abrirCafe()" title="Apoyar el proyecto">
@@ -936,25 +960,24 @@ function construirFilas() {
   $('#rows-view').innerHTML = html.join('');
 }
 
-/* Franja de titulares con el catálogo en cifras, en marcha continua.
-   El contenido se duplica para que el bucle no dé un salto al reiniciarse. */
+/* Las cifras del catálogo. Antes iban en una franja amarilla que se deslizaba sin
+   parar bajo la barra: mucho ruido y mucho sitio para un dato que se mira una vez.
+   Ahora esperan quietas al final, para quien tenga la curiosidad. */
 function construirTicker() {
   const dirs = new Set(); M.forEach(m => (m.directores || []).forEach(d => dirs.add(d)));
   const horas = Math.round(M.reduce((s, m) => s + (m.duracion || 0), 0) / 3600);
   const decTop = F.decadas.slice().sort((a, b) => b[1] - a[1])[0];
   const stats = [
-    [M.length.toLocaleString('es'), 'Títulos'],
-    [dirs.size.toLocaleString('es'), 'Directores'],
-    [F.paises.length, 'Países'],
-    [F.generos.length, 'Géneros'],
-    [`${ANIO_MIN}–${ANIO_MAX}`, 'Años de cine'],
-    [decTop ? decTop[0] + 's' : '—', 'Década más nutrida'],
-    [horas.toLocaleString('es'), 'Horas de metraje'],
-    [M.filter(m => m.videoId).length.toLocaleString('es'), 'Con reproducción directa'],
+    [M.length.toLocaleString('es'), 'títulos'],
+    [dirs.size.toLocaleString('es'), 'directores'],
+    [F.paises.length, 'países'],
+    [F.generos.length, 'géneros'],
+    [`${ANIO_MIN}–${ANIO_MAX}`, 'años de cine'],
+    [horas.toLocaleString('es'), 'horas de metraje'],
+    [decTop ? decTop[0] + 's' : '—', 'la década más nutrida'],
   ];
-  const tanda = stats.map(([v, k]) =>
-    `<span class="tk">${esc(v)} <i>${esc(k)}</i></span><span class="sep">◆</span>`).join('');
-  $('#tk-track').innerHTML = tanda + tanda;
+  $('#cifras').innerHTML = stats.map(([v, k]) =>
+    `<span><b>${esc(v)}</b>${esc(k)}</span>`).join('');
 }
 
 /* ---------- rejilla con carga progresiva ---------- */
@@ -1081,6 +1104,8 @@ function actualizarContadoresGrupo() {
 }
 
 /* ---------- héroe ---------- */
+// 9 segundos era poco: daba tiempo justo a leer el título y ya cambiaba
+const HERO_MS = 16000;
 let heroList = [], heroI = 0, heroTimer = null;
 function construirHero() {
   heroList = [...M].filter(m => m.poster && m.sinopsis && m.imdb >= 7).slice(0, 40)
@@ -1090,7 +1115,17 @@ function construirHero() {
   $('#hero-dots').innerHTML = heroList.map((_, i) => `<i data-h="${i}" class="${i ? '' : 'on'}"></i>`).join('');
   pintarHero(0);
   clearInterval(heroTimer);
-  heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), 9000);
+  heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), HERO_MS);
+  // Cambiar de portada mientras alguien está leyendo la sinopsis es incómodo:
+  // con el puntero encima, el carrusel espera.
+  const h = $('#hero');
+  h.addEventListener('pointerenter', () => clearInterval(heroTimer));
+  h.addEventListener('pointerleave', () => {
+    clearInterval(heroTimer);
+    if (heroList.length > 1 && !h.hidden) {
+      heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), HERO_MS);
+    }
+  });
 }
 function pintarHero(i) {
   heroI = i;
@@ -1167,9 +1202,29 @@ function redesCompartir(m) {
   </div>`;
 }
 
-/* ---------- detalle ---------- */
-function abrirModal(id, autoplay) {
+/* ---------- detalle ----------
+   Si el navegador sabe hacer transiciones de vista, la carátula sobre la que se
+   pulsa se transforma en la de la ficha en lugar de aparecer de golpe. Donde no
+   exista —o si el sistema pide menos movimiento— se abre como siempre. */
+const menosMovimiento = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function abrirModal(id, autoplay, origen) {
   const m = M.find(x => x.id === id); if (!m) return;
+  if (document.startViewTransition && origen && !menosMovimiento()) {
+    origen.style.viewTransitionName = 'caratula';
+    // Dentro del callback se le quita el nombre a la carátula y se lo queda la
+    // ficha: dos elementos no pueden llamarse igual a la vez o la transición falla.
+    document.startViewTransition(() => {
+      origen.style.viewTransitionName = '';
+      pintarModal(m, autoplay);
+    });
+    return;
+  }
+  pintarModal(m, autoplay);
+}
+
+function pintarModal(m, autoplay) {
+  const id = m.id;
   const img = m.poster || m.thumb || '';
   const rel = M.filter(o => o.id !== m.id && (
     (m.directores || []).some(d => (o.directores || []).includes(d)) ||
@@ -1279,7 +1334,7 @@ const App = {
     // Con el héroe oculto no tiene sentido que siga rotando ni recoloreando el fondo
     if (hay) { clearInterval(heroTimer); heroTimer = null; }
     else if (!heroTimer && heroList.length > 1) {
-      heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), 9000);
+      heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), HERO_MS);
     }
     if (hay) pintarGrid(true); else { pintarChipsActivos(); }
     $('#btn-new').classList.toggle('on', S.soloNuevas);
@@ -1406,7 +1461,7 @@ document.addEventListener('click', e => {
   if (play) { reproducir(play.dataset.play); return; }
 
   const c = t.closest('.card');
-  if (c) { abrirModal(c.dataset.id, false); return; }
+  if (c) { abrirModal(c.dataset.id, false, c.querySelector('img')); return; }
 
   const rail = t.closest('[data-rail]');
   if (rail) {
@@ -1527,8 +1582,6 @@ function avisoNovedades() {
 }
 
 /* ---------- arranque ---------- */
-// La fecha es la de la reconstrucción: ya no hay sincronización en el navegador
-$('#stamp').textContent = `${M.length.toLocaleString('es')} títulos · act. ${fecha(META.generado)}`;
 $('#new-count').textContent = NOVEDADES.size;
 $('#btn-new').style.display = NOVEDADES.size ? '' : 'none';
 construirHero();
