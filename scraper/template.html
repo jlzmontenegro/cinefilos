@@ -502,7 +502,15 @@ select.sel option{background:#12151f;color:#f2f3f7}
   .card .fav{opacity:1;transform:scale(1)}
   .card:hover{transform:none}
 }
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* Quien pide menos movimiento en su sistema no debe ver animaciones. Acortarlas a
+   0,01 ms basta para las que se ejecutan una vez, pero NO para las que se repiten
+   sin fin: la franja de cifras seguía dando su vuelta completa, sólo que cien mil
+   veces por segundo, y se veía disparada. Hay que cortar también las repeticiones.
+   (Pasó de verdad: en un PC con «efectos de animación» desactivado.) */
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important}
+}
 </style>
 </head>
 <body>
