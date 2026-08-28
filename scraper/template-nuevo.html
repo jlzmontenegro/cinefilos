@@ -124,9 +124,6 @@ body{
   border:1px solid var(--stroke);background:#12151f;box-shadow:var(--shadow-lift)}
 #hero .cartel img{width:100%;height:100%;object-fit:cover;display:block}
 #hero .cartel[hidden]{display:none!important}
-@media(max-width:900px){#hero .cartel{display:none}}
-/* Con el cartel a la vista, el texto se recoge para no pasarle por debajo */
-@media(min-width:901px){#hero .inner{max-width:min(620px,56%)}}
 #hero .scrim{position:absolute;inset:0;z-index:-1;
   background:linear-gradient(78deg,rgba(3,5,10,.94) 0%,rgba(3,5,10,.72) 42%,rgba(3,5,10,.15) 78%),
              linear-gradient(0deg,rgba(3,5,10,.9),transparent 55%)}
@@ -483,9 +480,14 @@ select.sel option{background:#12151f;color:#f2f3f7}
 .related .card{width:104px}
 
 /* ------------------------------ NOVEDADES -------------------------------- */
+/* El ancho hay que decirlo: con `left:50%` y sin más, el aviso sólo puede ocupar
+   lo que queda hasta el borde derecho — media pantalla — y en el móvil el texto
+   se partía en una columna de seis líneas. */
 #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,140%);z-index:120;
+  width:max-content;max-width:min(92vw,440px);
   padding:13px 20px;border-radius:var(--r-pill);font-size:13.5px;font-weight:600;
   display:flex;align-items:center;gap:12px;transition:transform .5s var(--ease)}
+#toast span{min-width:0}
 #toast.on{transform:translate(-50%,0)}
 #toast button{border:none;background:linear-gradient(140deg,var(--accent),var(--accent-2));color:var(--sobre-accent);
   height:30px;padding:0 14px;border-radius:var(--r-pill);font-size:12.5px;font-weight:650;cursor:pointer}
@@ -522,6 +524,23 @@ select.sel option{background:#12151f;color:#f2f3f7}
   #modal .hd .in{flex-direction:column;align-items:flex-start}
   #modal .poster{width:88px}
   #cierre{padding:40px 20px 30px}
+}
+
+/* ---- El cartel del héroe ----
+   Va aquí, al final, y no junto al resto de reglas del héroe: `#hero .inner`
+   define su margen con la forma abreviada `padding`, y como tiene la misma
+   especificidad, gana la que se escriba después. Puesto antes, el texto se metía
+   por debajo de la carátula. */
+@media(min-width:901px){
+  /* con sitio de sobra, el texto simplemente se recoge */
+  #hero .inner{max-width:min(620px,56%)}
+}
+@media(max-width:900px){
+  /* estrecho: la carátula se ancla arriba a la derecha, más pequeña, y el texto
+     reserva su hueco a la derecha */
+  #hero .cartel{width:clamp(74px,21vw,116px);height:auto;
+    top:clamp(16px,4vw,26px);transform:none;border-radius:12px}
+  #hero .inner{padding-right:calc(clamp(74px,21vw,116px) + clamp(26px,6vw,40px))}
 }
 
 /* En pantallas táctiles no existe el estado :hover, así que todo lo que
