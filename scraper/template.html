@@ -110,8 +110,21 @@ body{
 #hero{position:relative;margin:clamp(12px,2vw,22px) clamp(14px,3vw,34px) 8px;
   border-radius:var(--r-panel);overflow:hidden;min-height:clamp(300px,42vw,440px);
   display:flex;align-items:flex-end;isolation:isolate;box-shadow:var(--shadow-panel)}
+/* ok.ru sólo sirve pósters de 202x300 y no acepta pedir otro tamaño. Estirar eso
+   a lo ancho de la pantalla son casi diez aumentos, y se veía el grano. Como el
+   fondo es sólo ambiente, se difumina de verdad: así deja de ser una foto ampliada
+   y pasa a ser una mancha de color. El escalado extra tapa el borde que el
+   desenfoque deja transparente. La imagen nítida va aparte, en el cartel. */
 #hero .bg{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;
-  transform:scale(1.15);filter:blur(2px) saturate(125%);transition:opacity .7s var(--ease)}
+  transform:scale(1.3);filter:blur(28px) saturate(150%) brightness(.92);
+  transition:opacity .7s var(--ease)}
+/* El póster, a tamaño casi original: aquí sí se ve nítido */
+#hero .cartel{position:absolute;right:clamp(18px,4vw,58px);top:50%;transform:translateY(-50%);
+  height:clamp(170px,62%,290px);aspect-ratio:2/3;border-radius:16px;overflow:hidden;z-index:1;
+  border:1px solid var(--stroke);background:#12151f;box-shadow:var(--shadow-lift)}
+#hero .cartel img{width:100%;height:100%;object-fit:cover;display:block}
+#hero .cartel[hidden]{display:none!important}
+@media(max-width:900px){#hero .cartel{display:none}}
 #hero .scrim{position:absolute;inset:0;z-index:-1;
   background:linear-gradient(78deg,rgba(3,5,10,.94) 0%,rgba(3,5,10,.72) 42%,rgba(3,5,10,.15) 78%),
              linear-gradient(0deg,rgba(3,5,10,.9),transparent 55%)}
@@ -433,6 +446,14 @@ select.sel option{background:#12151f;color:#f2f3f7}
 @media(max-width:780px){#modal .bd{grid-template-columns:1fr}}
 #modal .syn{font-size:14.5px;line-height:1.68;color:var(--txt-dim);margin:0}
 #modal .acts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+/* Respaldo de compartir, para cuando el sistema no trae su propio menú */
+.redes{display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 16px}
+.redes a,.redes button{font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:var(--r-pill);
+  border:1px solid var(--stroke-soft);background:var(--glass);color:var(--txt-dim);
+  text-decoration:none;cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+.redes a:hover,.redes button:hover{color:var(--accent);background:var(--glass-hi);
+  border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.redes button.copiada{background:var(--accent);color:var(--sobre-accent);border-color:transparent}
 .dl{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;font-size:13.5px;align-items:baseline}
 .dl dt{color:var(--txt-faint);font-weight:600;white-space:nowrap}
 .dl dd{margin:0;color:var(--txt);font-weight:500}
@@ -538,6 +559,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
 
 <section id="hero" hidden>
   <div class="bg"></div><div class="scrim"></div>
+  <div class="cartel" id="hero-cartel" hidden><img id="hero-img" alt=""></div>
   <div class="inner">
     <div class="eyebrow"><span id="hero-eyebrow">Destacada</span></div>
     <h1 id="hero-title"></h1>
@@ -1065,6 +1087,13 @@ function pintarHero(i) {
   const m = heroList[i]; if (!m) return;
   const img = m.poster || m.thumb || '';
   $('#hero .bg').style.backgroundImage = `url('${img}')`;
+  // el cartel se esconde si no hay imagen o si el enlace ya ha caducado
+  const cartel = $('#hero-cartel'), foto = $('#hero-img');
+  cartel.hidden = !img;
+  if (img) {
+    foto.onerror = () => { cartel.hidden = true; };
+    foto.src = img;
+  }
   $('#hero-eyebrow').textContent = NOVEDADES.has(m.id) ? 'Novedad' : 'Destacada';
   $('#hero-title').textContent = m.titulo;
   $('#hero-orig').textContent = m.tituloAlt && m.tituloOriginal !== m.titulo ? 'Título original: ' + m.tituloOriginal : '';
@@ -1106,6 +1135,28 @@ function aplicarTinte([r, g, b]) {
   $('#ambient .orb.b').style.background = `rgb(${Math.round(b * .8)},${Math.round(r * .7)},${Math.round(g * .9)})`;
 }
 
+/* ---------- compartir ----------
+   Siempre se comparte la dirección del sitio publicado, nunca la del archivo:
+   abierto con file:// el enlace de la barra no le sirve a nadie más. */
+const SITIO = 'https://jlzmontenegro.github.io/cinefilos/';
+const enlaceDe = (m) => `${SITIO}#p${m.id}`;
+const textoDe = (m) => `${m.titulo}${m.anio ? ` (${m.anio})` : ''} — en Cinefilos`;
+
+function redesCompartir(m) {
+  const u = encodeURIComponent(enlaceDe(m));
+  const t = encodeURIComponent(textoDe(m));
+  const redes = [
+    ['WhatsApp', `https://wa.me/?text=${t}%20${u}`],
+    ['Telegram', `https://t.me/share/url?url=${u}&text=${t}`],
+    ['X', `https://twitter.com/intent/tweet?text=${t}&url=${u}`],
+    ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${u}`],
+  ];
+  return `<div class="redes" id="redes" hidden>
+    ${redes.map(([n, url]) => `<a href="${url}" target="_blank" rel="noopener">${n}</a>`).join('')}
+    <button data-copiar="${esc(enlaceDe(m))}">Copiar enlace</button>
+  </div>`;
+}
+
 /* ---------- detalle ---------- */
 function abrirModal(id, autoplay) {
   const m = M.find(x => x.id === id); if (!m) return;
@@ -1144,7 +1195,9 @@ function abrirModal(id, autoplay) {
           ${m.videoId ? `<button class="btn-primary" data-play="${m.videoId}">▶ Reproducir</button>` : ''}
           ${m.embed ? `<a class="btn-ghost" href="${esc(m.embed)}" target="_blank" rel="noopener">Fuente alternativa ↗</a>` : ''}
           <button class="btn-ghost" data-fav="${m.id}">${FAVS.has(m.id) ? '♥ En mi lista' : '♡ Mi lista'}</button>
+          <button class="btn-ghost" onclick="App.compartir('${m.id}')">↗ Compartir</button>
         </div>
+        ${redesCompartir(m)}
         <div id="player">${''}</div>
         <p class="syn">${esc(m.sinopsis || 'Sin sinopsis disponible.')}</p>
       </div>
@@ -1238,6 +1291,20 @@ const App = {
   arriba() { scrollTo({ top: 0, behavior: 'smooth' }); },
   // También se llega desde fuera con .../cinefilos/#cafe, que es a donde apunta
   // el correo de los viernes: allí la llave se puede copiar de un toque.
+  /* En móvil y en buena parte de los escritorios existe el menú de compartir del
+     propio sistema, que ya trae WhatsApp y todo lo demás. Donde no lo haya —o si
+     se cancela— se despliega la fila de enlaces de respaldo. */
+  async compartir(id) {
+    const m = M.find(x => x.id === id); if (!m) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: m.titulo, text: textoDe(m), url: enlaceDe(m) });
+        return;
+      } catch { return; }   // cancelar no es un fallo: no se insiste con el respaldo
+    }
+    const fila = $('#redes');
+    if (fila) fila.hidden = !fila.hidden;
+  },
   abrirCafe() { $('#cafe').classList.add('on'); },
   cerrarCafe() {
     $('#cafe').classList.remove('on');
@@ -1292,18 +1359,19 @@ async function copiarAlPortapapeles(boton) {
     try { ok = document.execCommand('copy'); } catch {}
     ta.remove();
   }
-  const acc = boton.querySelector('.acc');
+  // el botón de la llave tiene su etiqueta aparte; el de compartir es texto suelto
+  const acc = boton.querySelector('.acc') || boton;
+  const original = acc.textContent;
   if (ok) {
     boton.classList.add('copiada');
     acc.textContent = '¡Copiado!';
     clearTimeout(copiarAlPortapapeles._t);
     copiarAlPortapapeles._t = setTimeout(() => {
       boton.classList.remove('copiada');
-      acc.textContent = 'Copiar';
+      acc.textContent = original;
     }, 2200);
   } else {
-    acc.textContent = 'Cópialo a mano';
-    aviso(`Copia la llave: ${texto}`, 8000);
+    aviso(`Cópialo a mano: ${texto}`, 8000);
   }
 }
 
