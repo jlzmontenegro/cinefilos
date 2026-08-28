@@ -105,9 +105,11 @@ body{
   color:var(--sobre-accent);font-size:11px;font-weight:800;display:inline-grid;place-items:center}
 
 /* ------------------------------- HÉROE ---------------------------------- */
+/* El texto va centrado en vertical (alineado a la izquierda, pero a media altura).
+   El vitral no se entera: lleva su propio align-self:stretch. */
 #hero{position:relative;margin:clamp(12px,2vw,22px) clamp(14px,3vw,34px) 8px;
   border-radius:var(--r-panel);overflow:hidden;min-height:clamp(300px,42vw,440px);
-  display:flex;align-items:flex-end;isolation:isolate;box-shadow:var(--shadow-panel)}
+  display:flex;align-items:center;isolation:isolate;box-shadow:var(--shadow-panel)}
 /* ok.ru sólo sirve pósters de 202x300 y no acepta pedir otro tamaño. Estirar eso
    a lo ancho de la pantalla son casi diez aumentos, y se veía el grano. Como el
    fondo es sólo ambiente, se difumina de verdad: así deja de ser una foto ampliada
@@ -116,12 +118,33 @@ body{
 #hero .bg{position:absolute;inset:0;z-index:-2;background-size:cover;background-position:center;
   transform:scale(1.3);filter:blur(28px) saturate(150%) brightness(.92);
   transition:opacity .7s var(--ease)}
-/* El póster, a tamaño casi original: aquí sí se ve nítido */
-#hero .cartel{position:absolute;right:clamp(18px,4vw,58px);top:50%;transform:translateY(-50%);
-  height:clamp(170px,62%,290px);aspect-ratio:2/3;border-radius:16px;overflow:hidden;z-index:1;
-  border:1px solid var(--stroke);background:#12151f;box-shadow:var(--shadow-lift)}
-#hero .cartel img{width:100%;height:100%;object-fit:cover;display:block}
-#hero .cartel[hidden]{display:none!important}
+/* El vitral: las destacadas como láminas de vidrio en perspectiva. La de delante
+   se ve de frente y a todo color; las de los lados quedan giradas, apagadas y
+   detrás, como fichas en un tarjetero. Sirve de cartel y de control a la vez. */
+/* `align-self:stretch` y nada de altura en porcentaje: el héroe se dimensiona con
+   `min-height`, así que un `height:%` aquí no resuelve y el contenedor se quedaba
+   con altura cero — las láminas se amontonaban arriba. */
+#hero .vitral{position:relative;flex:0 0 auto;align-self:stretch;z-index:1;
+  width:clamp(250px,36vw,380px);
+  perspective:1100px;transform-style:preserve-3d}
+#hero .lamina{position:absolute;left:50%;top:50%;margin:0;padding:0;cursor:pointer;
+  width:clamp(120px,19vw,210px);aspect-ratio:2/3;border-radius:10px;overflow:hidden;
+  background:#0d1018;border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 26px 50px -18px rgba(0,0,0,.85);
+  transition:transform .62s var(--ease),opacity .62s var(--ease),filter .62s var(--ease)}
+#hero .lamina img{width:100%;height:100%;object-fit:cover;display:block}
+/* El brillo diagonal es lo que le da el aire de vidrio */
+#hero .lamina::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(128deg,rgba(255,255,255,.24) 0%,rgba(255,255,255,.05) 32%,
+             transparent 52%,rgba(255,255,255,.08) 100%)}
+/* La de delante va limpia: sin velo de vidrio encima. El brillo es lo que hace
+   que las de atrás parezcan láminas, pero sobre la principal la deslucía. */
+/* La principal, opaca del todo y sin nada encima: ni velo, ni filtro, ni borde
+   translúcido, que el canto de vidrio también la hacía parecer transparente. */
+#hero .lamina.on{opacity:1;filter:none;border-color:#f2f3f7;
+  box-shadow:0 34px 60px -20px rgba(0,0,0,.9)}
+#hero .lamina.on::after{display:none}
+#hero .lamina[hidden]{display:none!important}
 #hero .scrim{position:absolute;inset:0;z-index:-1;
   background:linear-gradient(78deg,rgba(3,5,10,.94) 0%,rgba(3,5,10,.72) 42%,rgba(3,5,10,.15) 78%),
              linear-gradient(0deg,rgba(3,5,10,.9),transparent 55%)}
@@ -145,19 +168,6 @@ body{
   -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
   display:inline-flex;align-items:center;gap:9px;transition:transform .18s var(--ease),background .2s}
 .btn-ghost:hover{background:var(--glass-hi);transform:translateY(-2px)}
-/* Las destacadas, en miniatura: se ve de antemano qué viene y se salta a una
-   concreta. Van dentro de la columna de texto — flotando abajo a la derecha
-   caían encima del cartel y no se distinguían. */
-#hero .dots{display:flex;gap:8px;margin-top:18px}
-#hero .dots img{width:34px;height:51px;object-fit:cover;border-radius:6px;cursor:pointer;
-  display:block;background:#12151f;border:1px solid var(--stroke-soft);
-  opacity:.45;filter:saturate(.65);
-  transition:opacity .3s var(--ease),transform .3s var(--ease),
-             filter .3s var(--ease),border-color .3s var(--ease)}
-#hero .dots img:hover{opacity:.9;transform:translateY(-3px)}
-#hero .dots img.on{opacity:1;filter:none;border-color:var(--accent);transform:translateY(-3px);
-  box-shadow:0 0 0 1px var(--accent),0 10px 22px -10px rgba(0,0,0,.8)}
-@media(max-width:640px){#hero .dots{gap:6px}#hero .dots img{width:30px;height:45px}}
 
 /* ------------------------------- CHIPS ---------------------------------- */
 .chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 11px;
@@ -539,27 +549,18 @@ select.sel option{background:#12151f;color:#f2f3f7}
    por debajo de la carátula. */
 @media(min-width:901px){
   /* El cartel deja de flotar encima y pasa a ser una columna del héroe: se estira
-     de arriba abajo pegado al canto izquierdo, y su ancho lo marca la proporción
-     del póster. Así el texto se coloca al lado solo, sin tener que adivinar
-     cuánto hay que apartarlo. */
-  /* El ancho se calcula desde la altura del héroe, no se deja en `auto`: así el
-     recuadro guarda la proporción 2:3 del póster y la imagen entra entera. Con
-     `auto` mandaba el ancho nativo del archivo (209 px) y `cover` recortaba una
-     cuarta parte de los lados. */
-  /* `order` lo manda al final y `margin-left:auto` lo empuja contra el canto
-     derecho; el texto se queda a la izquierda, sobre la parte oscura del velo. */
-  #hero .cartel{position:static;align-self:stretch;flex:0 0 auto;
-    order:2;margin-left:auto;
-    width:calc(clamp(300px,42vw,440px) * 2 / 3);height:auto;transform:none;
-    border:0;border-left:1px solid var(--stroke-soft);border-radius:0;box-shadow:none}
-  #hero .inner{max-width:min(640px,62%)}
+     el vitral se coloca a la derecha y el texto se recoge para dejarle sitio. */
+  #hero .vitral{order:2;margin-left:auto;margin-right:clamp(10px,2vw,28px)}
+  #hero .inner{max-width:min(600px,54%)}
 }
 @media(max-width:900px){
-  /* estrecho: la carátula se ancla arriba a la derecha, más pequeña, y el texto
-     reserva su hueco a la derecha */
-  #hero .cartel{width:clamp(74px,21vw,116px);height:auto;
-    top:clamp(16px,4vw,26px);transform:none;border-radius:12px}
-  #hero .inner{padding-right:calc(clamp(74px,21vw,116px) + clamp(26px,6vw,40px))}
+  /* Estrecho: el héroe se parte en dos pisos. El vitral va arriba —es lo primero
+     que se ve— y debajo el título y lo demás. De lado no cabrían tres láminas
+     sin comerse el título. */
+  #hero{flex-direction:column;align-items:stretch;min-height:0}
+  #hero .vitral{order:0;align-self:center;width:min(100%,340px);
+    height:clamp(200px,46vw,260px);margin:clamp(18px,5vw,26px) auto 0}
+  #hero .inner{padding-top:clamp(14px,4vw,20px)}
 }
 
 /* En pantallas táctiles no existe el estado :hover, así que todo lo que
@@ -601,7 +602,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
 
 <section id="hero" hidden>
   <div class="bg"></div><div class="scrim"></div>
-  <div class="cartel" id="hero-cartel" hidden><img id="hero-img" alt=""></div>
+  <div class="vitral" id="hero-vitral" role="tablist" aria-label="Películas destacadas"></div>
   <div class="inner">
     <div class="eyebrow"><span id="hero-eyebrow">Destacada</span></div>
     <h1 id="hero-title"></h1>
@@ -612,7 +613,6 @@ select.sel option{background:#12151f;color:#f2f3f7}
       <button class="btn-primary" id="hero-play">▶ Ver ahora</button>
       <button class="btn-ghost" id="hero-info">Más información</button>
     </div>
-    <div class="dots" id="hero-dots"></div>
   </div>
 </section>
 
@@ -1117,16 +1117,48 @@ function actualizarContadoresGrupo() {
 const HERO_MS = 16000;
 let heroList = [], heroI = 0, heroTimer = null;
 function construirHero() {
-  heroList = [...M].filter(m => m.poster && m.sinopsis && m.imdb >= 7).slice(0, 40)
-    .sort(() => Math.random() - .5).slice(0, 6);
+  /* El héroe se reparte en tres cajones para que no sea siempre lo mismo:
+     3 novedades + 2 joyas del catálogo + 1 infantil. Antes sólo salían novedades
+     bien valoradas, así que un clásico no asomaba nunca por bueno que fuera.
+     Barajado de verdad (Fisher-Yates): `sort(() => Math.random() - .5)` parece
+     que baraja pero no reparte parejo y repetía siempre las mismas. */
+  const alAzar = (lista, n) => {
+    const c = [...lista];
+    for (let k = c.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [c[k], c[j]] = [c[j], c[k]];
+    }
+    return c.slice(0, n);
+  };
+  const luce = m => m.poster && m.sinopsis;
+  // «Infantil» y «Familiar» tienen cinco títulos cada uno: muy pocos para elegir,
+  // así que esa plaza la comparten con animación.
+  const paraNiños = m => (m.generos || []).some(g => g === 'Infantil' || g === 'Familiar' || g === 'Animación');
+
+  const elegidas = new Map();
+  const meter = (pelis) => pelis.forEach(m => elegidas.set(m.id, m));
+
+  meter(alAzar(M.filter(m => luce(m) && m.imdb >= 7).slice(0, 40), 3));           // novedades
+  meter(alAzar(M.filter(m => luce(m) && paraNiños(m) && m.imdb >= 6.5), 1));      // una para peques
+  meter(alAzar([...M].filter(m => luce(m) && m.imdb >= 8 && !elegidas.has(m.id))
+                     .sort((a, b) => b.imdb - a.imdb).slice(0, 60), 2));          // joyas
+
+  heroList = alAzar([...elegidas.values()], 6);
+  // Por si algún cajón se queda vacío, se completa con lo más reciente
+  if (heroList.length < 6) {
+    for (const m of M.filter(luce)) {
+      if (heroList.length >= 6) break;
+      if (!heroList.some(x => x.id === m.id)) heroList.push(m);
+    }
+  }
   if (!heroList.length) heroList = M.slice(0, 5);
   $('#hero').hidden = false;
-  // Si alguna miniatura no carga se esconde ella sola, que es mejor que dejar el
-  // icono de imagen rota entre las demás.
-  $('#hero-dots').innerHTML = heroList.map((m, i) =>
-    `<img src="${esc(m.poster || m.thumb || '')}" data-h="${i}" class="${i ? '' : 'on'}"
-          alt="${esc(m.titulo)}" title="${esc(m.titulo)}" loading="lazy"
-          onerror="this.remove()">`).join('');
+  // El vitral se arma una sola vez; luego sólo se recolocan las láminas.
+  $('#hero-vitral').innerHTML = heroList.map((m, i) =>
+    `<button class="lamina" data-h="${i}" role="tab" title="${esc(m.titulo)}"
+             aria-label="${esc(m.titulo)}">
+       <img src="${esc(m.poster || m.thumb || '')}" alt="" onerror="this.style.opacity=0">
+     </button>`).join('');
   pintarHero(0);
   clearInterval(heroTimer);
   heroTimer = setInterval(() => pintarHero((heroI + 1) % heroList.length), HERO_MS);
@@ -1141,18 +1173,43 @@ function construirHero() {
     }
   });
 }
+/* Coloca las láminas del vitral alrededor de la que está activa: la de delante
+   mirando de frente y las demás giradas hacia atrás, como fichas en un tarjetero.
+   La distancia se mide en circular, así que el carrusel no tiene ni principio ni
+   final. Las transformaciones se calculan aquí y no en CSS porque hace falta el
+   valor absoluto de la distancia, que en hojas de estilo es incómodo. */
+function colocarVitral(activo) {
+  const n = heroList.length;
+  $$('#hero-vitral .lamina').forEach((el, i) => {
+    let d = i - activo;
+    if (d > n / 2) d -= n;
+    if (d < -n / 2) d += n;
+    const lejos = Math.abs(d);
+    const visible = lejos <= 2;
+    el.hidden = !visible;
+    if (!visible) return;
+    // El translateZ no es decorativo: dentro de un contenedor con preserve-3d el
+    // navegador ordena por posición en 3D, no por z-index, y los planos girados de
+    // las vecinas se cruzaban por delante de la principal. Al ser translúcidas la
+    // velaban y parecía que la de delante tenía transparencia. Separándolas en
+    // profundidad, cada una queda donde debe.
+    el.style.transform = `translate(-50%,-50%) translateX(${d * 40}%) ` +
+      `translateZ(${-lejos * 120}px) rotateY(${-d * 32}deg) scale(${1 - lejos * 0.14})`;
+    // Las de atrás bajan mucho: son ambiente, no compiten con la principal
+    el.style.opacity = lejos === 0 ? 1 : lejos === 1 ? .34 : .15;
+    el.style.filter = lejos === 0 ? 'none' : 'saturate(.4) brightness(.5)';
+    el.style.zIndex = 10 - lejos;
+    el.classList.toggle('on', lejos === 0);
+    el.setAttribute('aria-selected', lejos === 0 ? 'true' : 'false');
+  });
+}
+
 function pintarHero(i) {
   heroI = i;
   const m = heroList[i]; if (!m) return;
   const img = m.poster || m.thumb || '';
   $('#hero .bg').style.backgroundImage = `url('${img}')`;
-  // el cartel se esconde si no hay imagen o si el enlace ya ha caducado
-  const cartel = $('#hero-cartel'), foto = $('#hero-img');
-  cartel.hidden = !img;
-  if (img) {
-    foto.onerror = () => { cartel.hidden = true; };
-    foto.src = img;
-  }
+  colocarVitral(i);
   $('#hero-eyebrow').textContent = NOVEDADES.has(m.id) ? 'Novedad' : 'Destacada';
   $('#hero-title').textContent = m.titulo;
   $('#hero-orig').textContent = m.tituloAlt && m.tituloOriginal !== m.titulo ? 'Título original: ' + m.tituloOriginal : '';
@@ -1166,7 +1223,6 @@ function pintarHero(i) {
   $('#hero-syn').textContent = m.sinopsis || '';
   $('#hero-play').onclick = () => abrirModal(m.id, true);
   $('#hero-info').onclick = () => abrirModal(m.id, false);
-  $$('#hero-dots img').forEach(d => d.classList.toggle('on', +d.dataset.h === i));
   // el ambiente toma el tono de la portada
   tinteAmbiente(img);
 }
@@ -1512,7 +1568,8 @@ document.addEventListener('click', e => {
   if (t.dataset.gen) { App.closeModal(); App.set({ generos: [t.dataset.gen] }); return; }
   if (t.dataset.pais) { App.closeModal(); App.set({ paises: [t.dataset.pais] }); return; }
   if (t.dataset.dec) { App.closeModal(); App.set({ decadas: [+t.dataset.dec] }); return; }
-  if (t.dataset.h != null) { pintarHero(+t.dataset.h); return; }
+  const lam = t.closest('[data-h]');
+  if (lam) { pintarHero(+lam.dataset.h); return; }
 });
 
 /* filtrar las listas largas del panel (país, director) */
