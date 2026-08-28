@@ -78,29 +78,29 @@ const filaPeli = (m) => {
   const meta = [m.anio, (m.directores || [])[0]].filter(Boolean).join(' · ');
   const url = enlace(m);
   const nota = m.imdb
-    ? `<span style="display:inline-block;background:#fff5cc;color:#7a5c00;font-size:11px;
-         font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap">★ ${m.imdb.toFixed(1)}</span>`
+    ? `<span style="display:inline-block;background:#241f06;color:#ffc400;font-size:11px;
+         font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap">★ ${m.imdb.toFixed(1)}</span>`
     : '';
   return `
-  <tr><td style="padding:0 0 6px">
+  <tr><td style="padding:0 0 8px">
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
-           style="background:#ffffff;border:1px solid #ececf1;border-radius:12px">
+           style="background:#12151f;border:1px solid #23262f;border-radius:14px">
       <tr>
         <td width="76" valign="top" style="padding:12px 0 12px 12px">
           <a href="${esc(url)}" style="text-decoration:none">
             <img src="${esc(m.poster || '')}" width="64" height="96" alt=""
                  style="display:block;width:64px;height:96px;border-radius:8px;
-                        background:#e9e9ef;border:0;outline:none;text-decoration:none">
+                        background:#1b1f2b;border:0;outline:none;text-decoration:none">
           </a>
         </td>
         <td valign="top" style="padding:12px 14px 12px 10px">
-          <a href="${esc(url)}" style="color:#15161a;text-decoration:none;font-weight:700;
+          <a href="${esc(url)}" style="color:#f2f3f7;text-decoration:none;font-weight:700;
              font-size:15px;line-height:1.25">${esc(titulo(m))}</a>
-          <div style="margin:4px 0 0">
-            <span style="color:#75757f;font-size:12.5px">${esc(meta)}</span>
+          <div style="margin:5px 0 0">
+            <span style="color:#8e8e99;font-size:12.5px">${esc(meta)}</span>
             ${nota ? ' &nbsp;' + nota : ''}
           </div>
-          ${m.sinopsis ? `<div style="color:#5c5c66;font-size:12.5px;line-height:1.5;margin-top:6px">
+          ${m.sinopsis ? `<div style="color:#7c7c88;font-size:12.5px;line-height:1.5;margin-top:7px">
              ${esc(recortar(m.sinopsis, 165))}</div>` : ''}
         </td>
       </tr>
@@ -111,9 +111,9 @@ const filaPeli = (m) => {
 const cuerpo = `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">
+<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">
 <title>Cinefilos · novedades</title></head>
-<body style="margin:0;padding:0;background:#f2f2f6;
+<body style="margin:0;padding:0;background:#06070c;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">
   ${nuevas.length} título${nuevas.length === 1 ? '' : 's'} nuevo${nuevas.length === 1 ? '' : 's'} esta semana en Cinefilos.
@@ -122,61 +122,63 @@ const cuerpo = `<!doctype html>
 <tr><td align="center" style="padding:26px 12px 34px">
   <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px">
 
-    <tr><td style="background:#ffc400;border-radius:16px 16px 0 0;padding:22px 24px">
+    <!-- Cabecera oscura con una raya amarilla arriba, como el catálogo -->
+    <tr><td style="background:#ffc400;border-radius:16px 16px 0 0;font-size:0;line-height:0;height:4px">&nbsp;</td></tr>
+    <tr><td style="background:#0d1018;padding:24px 24px 20px;border-left:1px solid #23262f;border-right:1px solid #23262f">
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>
         <td>
           <!-- en versales y con aire entre letras, como la marca del catálogo -->
-          <div style="font-size:17px;font-weight:800;color:#0a0a0a;
+          <div style="font-size:17px;font-weight:800;color:#ffc400;
                text-transform:uppercase;letter-spacing:.14em">Cinefilos</div>
-          <div style="font-size:12.5px;color:#0a0a0a;opacity:.72;margin-top:2px">
+          <div style="font-size:12.5px;color:#8e8e99;margin-top:3px">
             Novedades del ${desde} al ${hasta}</div>
         </td>
-        <td align="right" style="font-size:34px;line-height:1">🎬</td>
+        <td align="right" style="font-size:32px;line-height:1">🎬</td>
       </tr></table>
     </td></tr>
 
-    <tr><td style="background:#ffffff;padding:22px 24px 6px">
+    <tr><td style="background:#0d1018;padding:4px 24px 6px;border-left:1px solid #23262f;border-right:1px solid #23262f">
       ${nuevas.length ? `
-        <div style="font-size:26px;font-weight:800;color:#15161a;letter-spacing:-.03em">
+        <div style="font-size:27px;font-weight:800;color:#f2f3f7;letter-spacing:-.03em">
           ${nuevas.length} título${nuevas.length === 1 ? '' : 's'} nuevo${nuevas.length === 1 ? '' : 's'}</div>
-        <div style="font-size:13px;color:#75757f;margin-top:4px">
+        <div style="font-size:13px;color:#8e8e99;margin-top:5px">
           El catálogo ya tiene ${movies.length.toLocaleString('es')} películas para ver.</div>`
       : `
-        <div style="font-size:20px;font-weight:800;color:#15161a;letter-spacing:-.03em">
+        <div style="font-size:21px;font-weight:800;color:#f2f3f7;letter-spacing:-.03em">
           Esta semana no entró nada nuevo</div>
-        <div style="font-size:13px;color:#75757f;margin-top:4px">
+        <div style="font-size:13px;color:#8e8e99;margin-top:5px">
           Pero el catálogo sigue ahí, con ${movies.length.toLocaleString('es')} películas.</div>`}
     </td></tr>
 
     ${mostradas.length ? `
-    <tr><td style="background:#ffffff;padding:18px 24px 2px">
+    <tr><td style="background:#0d1018;padding:20px 24px 2px;border-left:1px solid #23262f;border-right:1px solid #23262f">
       <div style="font-size:11.5px;font-weight:700;letter-spacing:.1em;
-                  text-transform:uppercase;color:#9a9aa4">
+                  text-transform:uppercase;color:#6f6f7b">
         ${nuevas.length > TOPE ? 'Las mejor valoradas' : 'Lo que ha entrado'}</div>
     </td></tr>
-    <tr><td style="background:#ffffff;padding:12px 12px 4px">
+    <tr><td style="background:#0d1018;padding:12px 12px 4px;border-left:1px solid #23262f;border-right:1px solid #23262f">
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
         ${mostradas.map(filaPeli).join('')}
       </table>
-      ${restantes > 0 ? `<div style="text-align:center;font-size:13px;color:#75757f;padding:12px 0 2px">
-        y <a href="${SITIO}" style="color:#75757f;font-weight:650">${restantes} título${restantes === 1 ? '' : 's'} más</a>
+      ${restantes > 0 ? `<div style="text-align:center;font-size:13px;color:#8e8e99;padding:12px 0 2px">
+        y <a href="${SITIO}" style="color:#ffc400;font-weight:650;text-decoration:none">${restantes} título${restantes === 1 ? '' : 's'} más</a>
         en el catálogo</div>` : ''}
     </td></tr>` : ''}
 
-    <tr><td style="background:#ffffff;padding:20px 24px 26px" align="center">
-      <a href="${SITIO}" style="display:inline-block;background:#15161a;color:#ffffff;
-         text-decoration:none;font-weight:650;font-size:14.5px;padding:13px 30px;border-radius:999px">
+    <tr><td style="background:#0d1018;padding:22px 24px 26px;border-left:1px solid #23262f;border-right:1px solid #23262f" align="center">
+      <a href="${SITIO}" style="display:inline-block;background:#ffc400;color:#0a0a0a;
+         text-decoration:none;font-weight:700;font-size:14.5px;padding:13px 30px;border-radius:999px">
         Ver el catálogo completo</a>
     </td></tr>
 
-    <tr><td style="background:#ffffff;padding:0 16px 20px">
+    <tr><td style="background:#0d1018;padding:0 16px 20px;border-left:1px solid #23262f;border-right:1px solid #23262f">
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
-             style="background:#fffaea;border:1px solid #ffe9a3;border-radius:12px">
+             style="background:#171408;border:1px solid #3d3413;border-radius:12px">
         <tr>
           <td width="54" align="center" valign="middle" style="padding:16px 0 16px 16px;font-size:26px">☕</td>
           <td valign="middle" style="padding:16px 10px">
-            <div style="font-size:13.5px;font-weight:700;color:#15161a">¿Te sirve el catálogo?</div>
-            <div style="font-size:12.5px;color:#75757f;margin-top:2px;line-height:1.45">
+            <div style="font-size:13.5px;font-weight:700;color:#f2f3f7">¿Te sirve el catálogo?</div>
+            <div style="font-size:12.5px;color:#8e8e99;margin-top:2px;line-height:1.45">
               Mantenerlo cuesta ratos y ganas. Un café ayuda.</div>
           </td>
           <!-- La llave se ve aquí para quien la quiera copiar del propio correo, y
@@ -191,10 +193,10 @@ const cuerpo = `<!doctype html>
       </table>
     </td></tr>
 
-    <tr><td style="background:#ffffff;border-radius:0 0 16px 16px;
-        border-top:1px solid #f0f0f4;padding:16px 24px 20px">
-      <div style="font-size:11.5px;color:#9a9aa4;line-height:1.6">
-        Resumen automático de <a href="${SITIO}" style="color:#9a9aa4">Cinefilos</a>, cada viernes.
+    <tr><td style="background:#0d1018;border-radius:0 0 16px 16px;
+        border:1px solid #23262f;border-top:1px solid #1c1f28;padding:16px 24px 20px">
+      <div style="font-size:11.5px;color:#6f6f7b;line-height:1.6">
+        Resumen automático de <a href="${SITIO}" style="color:#6f6f7b">Cinefilos</a>, cada viernes.
       </div>
     </td></tr>
 
