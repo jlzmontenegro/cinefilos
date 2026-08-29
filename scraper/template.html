@@ -261,6 +261,11 @@ main{padding:0 0 90px}
   -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .card .tags .chip.star{color:#f7cf6a;border-color:rgba(247,207,106,.42)}
 .card .tags .chip.new{background:var(--new);color:var(--sobre-accent);border-color:transparent}
+/* Marca de serie: al buscar salen mezcladas con películas y hay que distinguirlas.
+   Dentro de la sección de Series sobra, y allí se esconde. */
+.card .tags .chip.serie{background:rgba(120,180,255,.22);color:#bcd9ff;
+  border-color:rgba(160,200,255,.45)}
+body.en-series .card .tags .chip.serie{display:none}
 .card .fav{position:absolute;top:9px;right:9px;z-index:3;width:28px;height:28px;border-radius:50%;
   border:1px solid var(--stroke);background:rgba(10,12,20,.5);-webkit-backdrop-filter:blur(12px);
   backdrop-filter:blur(12px);color:#fff;display:grid;place-items:center;font-size:13px;cursor:pointer;
@@ -316,6 +321,12 @@ main{padding:0 0 90px}
 .grid{display:grid;gap:clamp(16px,2vw,26px);
   grid-template-columns:repeat(auto-fill,minmax(clamp(142px,15vw,196px),1fr))}
 .grid .card{width:auto}
+/* Encabezado de grupo dentro de los resultados (Películas / Series) */
+.grid .grupo{grid-column:1/-1;margin:6px 0 -4px;display:flex;align-items:baseline;gap:10px;
+  font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--txt-faint)}
+.grid .grupo:not(:first-child){margin-top:22px;padding-top:20px;border-top:1px solid var(--stroke-soft)}
+.grid .grupo span{font-size:11.5px;font-weight:600;letter-spacing:.02em;
+  text-transform:none;color:var(--txt-faint);opacity:.75}
 /* Cabecera de resultados: centrada, para que el término buscado y el número de
    coincidencias sean lo primero que se lee al terminar de escribir. */
 .results-bar{display:flex;flex-direction:column;align-items:center;gap:14px;
@@ -618,7 +629,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
   <div class="brand" onclick="App.home()"><span class="name">Cinefilos</span></div>
   <div class="search-wrap">
     <span class="ic">⌕</span>
-    <input id="q" type="search" placeholder="Buscar película, director, país, año…" autocomplete="off" spellcheck="false">
+    <input id="q" type="search" placeholder="Buscar película o serie, director, año…" autocomplete="off" spellcheck="false">
     <span class="kbd">/</span>
   </div>
   <button class="nav-btn" id="btn-new" onclick="App.toggleNovedades()">✦ <span class="lbl">Novedades</span> <span class="badge" id="new-count">0</span></button>
@@ -895,8 +906,10 @@ function filtrar() {
   const q = fold(S.q).trim();
   const terms = q ? q.split(/\s+/).filter(Boolean) : [];
   const coincide = (m, t) => debil(t) ? m._t.includes(t) : m._s.includes(t);
-  // Se busca y se filtra dentro de la mitad en la que estés, nunca en las dos
-  let out = baseActual().filter(m => {
+  /* Navegar va separado, pero buscar no: quien escribe un título quiere
+     encontrarlo, y tener que acordarse de en qué mitad está es absurdo. Por eso al
+     buscar se mira el catálogo entero, y las tarjetas avisan de cuál es serie. */
+  let out = (terms.length ? M : baseActual()).filter(m => {
     if (terms.length && !terms.every(t => coincide(m, t))) return false;
     if (S.generos.size && !(m.generos || []).some(g => S.generos.has(g))) return false;
     if (S.paises.size && !(m.paises || []).some(p => S.paises.has(p))) return false;
@@ -922,9 +935,16 @@ function filtrar() {
   }[S.orden];
   // Al buscar manda la relevancia, salvo que se haya pedido un orden concreto:
   // en ese caso se respeta al pie de la letra.
-  if (!terms.length || S.orden !== 'recientes') return out.sort(ord);
-  const peso = new Map(out.map(m => [m, relevancia(m, q, terms)]));
-  return out.sort((a, b) => peso.get(a) - peso.get(b) || ord(a, b));
+  if (!terms.length) return out.sort(ord);
+  if (S.orden === 'recientes') {
+    const peso = new Map(out.map(m => [m, relevancia(m, q, terms)]));
+    out.sort((a, b) => peso.get(a) - peso.get(b) || ord(a, b));
+  } else {
+    out.sort(ord);
+  }
+  // Películas primero y series después, para poder presentarlas por grupos. El
+  // orden de dentro no se toca: `sort` es estable, así que la relevancia aguanta.
+  return out.sort((a, b) => (esSerie(a) ? 1 : 0) - (esSerie(b) ? 1 : 0));
 }
 /* «Series» no cuenta como filtro: es una sección con su propia portada, igual que
    Películas. Lo que decide entre portada y rejilla es el resto. */
@@ -957,6 +977,7 @@ function card(m) {
       <div class="spec"></div>
       <div class="tags">
         ${nuevo ? '<span class="chip new">NUEVO</span>' : ''}
+        ${esSerie(m) ? `<span class="chip serie">${esc(m.tipo === 'Serie' ? 'Serie' : m.tipo)}</span>` : ''}
         ${m.imdb ? `<span class="chip star">★ ${m.imdb.toFixed(1)}</span>` : ''}
       </div>
       <button class="fav ${fav ? 'on' : ''}" data-fav="${m.id}" title="Mi lista">${fav ? '♥' : '♡'}</button>
@@ -1071,11 +1092,30 @@ function construirTicker() {
 }
 
 /* ---------- rejilla con carga progresiva ---------- */
-let gridData = [], gridShown = 0;
+let gridData = [], gridShown = 0, gridGrupos = null, gridUltimoGrupo = null;
 function pintarGrid(reset) {
-  if (reset) { gridData = filtrar(); gridShown = 0; $('#grid').innerHTML = ''; }
+  if (reset) {
+    gridData = filtrar(); gridShown = 0; $('#grid').innerHTML = '';
+    gridUltimoGrupo = null;
+    // Si la búsqueda ha traído de los dos tipos, se presentan por separado, como
+    // las secciones. Con uno solo no hace falta encabezado.
+    const nSeries = gridData.filter(esSerie).length;
+    gridGrupos = (S.q.trim() && nSeries && nSeries < gridData.length)
+      ? { pelis: gridData.length - nSeries, series: nSeries } : null;
+  }
   const lote = gridData.slice(gridShown, gridShown + 60);
-  $('#grid').insertAdjacentHTML('beforeend', lote.map(card).join(''));
+  // Los encabezados se intercalan al vuelo, así funcionan con la carga por tandas
+  let trozos = '';
+  for (const m of lote) {
+    const grupo = esSerie(m) ? 'series' : 'pelis';
+    if (gridGrupos && grupo !== gridUltimoGrupo) {
+      gridUltimoGrupo = grupo;
+      trozos += `<h3 class="grupo">${grupo === 'pelis' ? 'Películas' : 'Series'}
+        <span>${gridGrupos[grupo].toLocaleString('es')}</span></h3>`;
+    }
+    trozos += card(m);
+  }
+  $('#grid').insertAdjacentHTML('beforeend', trozos);
   gridShown += lote.length;
   $('#sentinel').textContent = gridShown >= gridData.length
     ? (gridData.length ? '· fin del catálogo ·' : '') : 'Cargando…';
@@ -1091,8 +1131,12 @@ function pintarGrid(reset) {
     const pill = $('#res-pill');
     pill.textContent = n ? `${n.toLocaleString('es')} resultado${n === 1 ? '' : 's'}` : 'Sin resultados';
     pill.classList.toggle('vacio', !n);
+    // Al buscar se mira el catálogo entero, así que conviene decir cuántas de las
+    // que salen son series: si no, sorprende ver una en la sección de películas.
+    const series = q ? gridData.filter(esSerie).length : 0;
     $('#res-sub').textContent = n
-      ? (q ? `de ${M.length.toLocaleString('es')} títulos del catálogo`
+      ? (q ? `de ${M.length.toLocaleString('es')} títulos del catálogo` +
+             (series ? ` · ${series} ${series === 1 ? 'es serie' : 'son series'}` : '')
            : `${n.toLocaleString('es')} título${n === 1 ? '' : 's'} con lo que has elegido`)
       : (q ? 'Revisa la ortografía o usa menos palabras'
            : 'Ningún título coincide con los filtros activos');
@@ -1128,7 +1172,9 @@ function pintarChipsActivos() {
   if (S.anioMin) add('Desde', S.anioMin, JSON.stringify(['anioMin']));
   if (S.anioMax) add('Hasta', S.anioMax, JSON.stringify(['anioMax']));
   if (S.soloDirecta) add('Sólo', 'reproducción directa', JSON.stringify(['soloDirecta']));
-  if (S.soloSeries) add('Sólo', 'series', JSON.stringify(['soloSeries']));
+  // Buscando se mira el catálogo entero, así que la sección no está recortando
+  // nada: enseñar «Sólo series» junto a resultados de películas confundiría.
+  if (S.soloSeries && !S.q.trim()) add('Sólo', 'series', JSON.stringify(['soloSeries']));
   $('#active-filters').innerHTML = chips.join('');
   const n = chips.length;
   $('#f-count').style.display = n ? '' : 'none';
@@ -1502,6 +1548,9 @@ const App = {
       construirFilas(baseActual());
       construirHero(baseActual());
     }
+    // La marca de «Serie» sólo sobra navegando dentro de Series. En cuanto hay
+    // búsqueda los resultados vienen mezclados y hace falta verla.
+    document.body.classList.toggle('en-series', S.soloSeries && !S.q.trim());
     const hay = !!hayFiltros();
     $('#rows-view').hidden = hay;
     $('#hero').hidden = hay;
