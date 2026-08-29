@@ -1199,6 +1199,7 @@ function actualizarContadoresGrupo() {
 // 9 segundos era poco: daba tiempo justo a leer el título y ya cambiaba
 const HERO_MS = 16000;
 let heroList = [], heroI = 0, heroTimer = null;
+const heroMotivo = new Map();   // id → por qué está en el héroe
 function construirHero(base = M) {
   /* El héroe se reparte en tres cajones para que no sea siempre lo mismo:
      3 novedades + 2 joyas del catálogo + 1 infantil. Antes sólo salían novedades
@@ -1218,13 +1219,20 @@ function construirHero(base = M) {
   // así que esa plaza la comparten con animación.
   const paraNiños = m => (m.generos || []).some(g => g === 'Infantil' || g === 'Familiar' || g === 'Animación');
 
+  /* De cada elegida se guarda por qué está ahí, para decirlo en el rótulo en vez
+     del genérico «Destacada». El motivo puede depender de la propia película:
+     una joya de 1948 es un clásico, una de 2019 es mejor valorada. */
   const elegidas = new Map();
-  const meter = (pelis) => pelis.forEach(m => elegidas.set(m.id, m));
+  const meter = (pelis, motivo) => pelis.forEach(m => {
+    elegidas.set(m.id, m);
+    if (!heroMotivo.has(m.id)) heroMotivo.set(m.id, typeof motivo === 'function' ? motivo(m) : motivo);
+  });
 
-  meter(alAzar(base.filter(m => luce(m) && m.imdb >= 7).slice(0, 40), 3));           // novedades
-  meter(alAzar(base.filter(m => luce(m) && paraNiños(m) && m.imdb >= 6.5), 1));      // una para peques
+  meter(alAzar(base.filter(m => luce(m) && m.imdb >= 7).slice(0, 40), 3), 'Recién añadida');
+  meter(alAzar(base.filter(m => luce(m) && paraNiños(m) && m.imdb >= 6.5), 1), 'Para los peques');
   meter(alAzar([...base].filter(m => luce(m) && m.imdb >= 8 && !elegidas.has(m.id))
-                        .sort((a, b) => b.imdb - a.imdb).slice(0, 60), 2));          // joyas
+                        .sort((a, b) => b.imdb - a.imdb).slice(0, 60), 2),
+        m => (m.anio && m.anio < 1975 ? 'Clásico' : 'Mejor valorada'));
 
   heroList = alAzar([...elegidas.values()], 6);
   // Por si algún cajón se queda vacío, se completa con lo más reciente
@@ -1293,7 +1301,9 @@ function pintarHero(i) {
   const img = m.poster || m.thumb || '';
   $('#hero .bg').style.backgroundImage = `url('${img}')`;
   colocarVitral(i);
-  $('#hero-eyebrow').textContent = NOVEDADES.has(m.id) ? 'Novedad' : 'Destacada';
+  // «Novedad» manda sobre lo demás: si no la habías visto, eso es lo que interesa
+  $('#hero-eyebrow').textContent = NOVEDADES.has(m.id)
+    ? 'Novedad' : (heroMotivo.get(m.id) || 'Destacada');
   $('#hero-title').textContent = m.titulo;
   $('#hero-orig').textContent = m.tituloAlt && m.tituloOriginal !== m.titulo ? 'Título original: ' + m.tituloOriginal : '';
   $('#hero-meta').innerHTML = [
