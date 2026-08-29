@@ -192,6 +192,12 @@ body{
   -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
   display:inline-flex;align-items:center;gap:9px;transition:transform .18s var(--ease),background .2s}
 .btn-ghost:hover{background:var(--glass-hi);transform:translateY(-2px)}
+/* La fuente alternativa también reproduce, así que se viste del color de
+   «Reproducir» en vez del gris de «Mi lista» o «Compartir»: sigue siendo
+   secundaria —va en contorno, no en relleno— pero se ve que es para ver la peli. */
+.btn-alt{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 55%,transparent);
+  background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.btn-alt:hover{color:var(--sobre-accent);background:var(--accent);border-color:transparent}
 
 /* ------------------------------- CHIPS ---------------------------------- */
 .chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 11px;
@@ -942,9 +948,11 @@ function filtrar() {
   } else {
     out.sort(ord);
   }
-  // Películas primero y series después, para poder presentarlas por grupos. El
-  // orden de dentro no se toca: `sort` es estable, así que la relevancia aguanta.
-  return out.sort((a, b) => (esSerie(a) ? 1 : 0) - (esSerie(b) ? 1 : 0));
+  /* Se agrupan por tipo, y delante va el de la sección desde la que buscas: si
+     estás en Series y buscas, lo primero que quieres ver son series. El orden de
+     dentro no se toca: `sort` es estable, así que la relevancia aguanta. */
+  const primero = m => (esSerie(m) === !!S.soloSeries ? 0 : 1);
+  return out.sort((a, b) => primero(a) - primero(b));
 }
 /* «Series» no cuenta como filtro: es una sección con su propia portada, igual que
    Películas. Lo que decide entre portada y rejilla es el resto. */
@@ -1031,7 +1039,10 @@ function construirFilas(base = M) {
     : { generos: facetas(base, 'generos'), paises: facetas(base, 'paises'), decadas: facetas(base, 'decada').sort((a, b) => b[0] - a[0]) };
 
   const nuevas = base.filter(m => NOVEDADES.has(m.id));
-  const recientes = base.slice(0, 32);
+  /* «Añadidas recientemente» salta lo que ya está en Novedades. Si no, las dos
+     filas enseñan casi las mismas películas una debajo de otra: lo más reciente
+     es, justamente, lo que aún no habías visto. */
+  const recientes = base.filter(m => !NOVEDADES.has(m.id)).slice(0, 32);
   const top = [...base].filter(m => m.imdb >= 7.5).sort((a, b) => b.imdb - a.imdb).slice(0, 32);
   const clasicos = [...base].filter(m => m.anio && m.anio < 1970).sort((a, b) => b.imdb - a.imdb).slice(0, 32);
   const html = [];
@@ -1470,7 +1481,7 @@ function pintarModal(m, autoplay) {
       <div>
         <div class="acts">
           ${m.videoId ? `<button class="btn-primary" data-play="${m.videoId}">▶ Reproducir</button>` : ''}
-          ${m.embed ? `<a class="btn-ghost" href="${esc(m.embed)}" target="_blank" rel="noopener">Fuente alternativa ↗</a>` : ''}
+          ${m.embed ? `<a class="btn-ghost btn-alt" href="${esc(m.embed)}" target="_blank" rel="noopener">▶ Fuente alternativa ↗</a>` : ''}
           <button class="btn-ghost" data-fav="${m.id}">${FAVS.has(m.id) ? '♥ En mi lista' : '♡ Mi lista'}</button>
           <button class="btn-ghost" onclick="App.compartir('${m.id}')">↗ Compartir</button>
         </div>
