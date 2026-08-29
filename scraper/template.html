@@ -614,6 +614,7 @@ select.sel option{background:#12151f;color:#f2f3f7}
     <span class="kbd">/</span>
   </div>
   <button class="nav-btn" id="btn-new" onclick="App.toggleNovedades()">✦ <span class="lbl">Novedades</span> <span class="badge" id="new-count">0</span></button>
+  <button class="nav-btn" id="btn-series" onclick="App.toggleSeries()" title="Series y miniseries">📺 <span class="lbl">Series</span></button>
   <button class="nav-btn" id="btn-fav" onclick="App.toggleFavs()">♥ <span class="lbl">Mi lista</span></button>
   <button class="nav-btn" onclick="App.azar()" title="Sorpréndeme">🎲 <span class="lbl">Al azar</span></button>
   <button class="nav-btn" id="btn-cafe" onclick="App.abrirCafe()"
@@ -838,8 +839,12 @@ const FAVS = new Set(LS.get('favs', []));
 const S = {
   q: '', generos: new Set(), paises: new Set(), decadas: new Set(), tipos: new Set(),
   idiomas: new Set(), directores: new Set(), imdbMin: 0, soloNuevas: false, soloFavs: false,
-  soloDirecta: false, orden: 'recientes', anioMin: null, anioMax: null
+  soloDirecta: false, soloSeries: false, orden: 'recientes', anioMin: null, anioMax: null
 };
+
+/* Serie, miniserie o serie documental: todo lo que se ve por capítulos. El panel
+   de filtros permite afinar por tipo exacto; esto es el atajo de la barra. */
+const esSerie = m => /serie/i.test(m.tipo || '');
 
 /* ---------- facetas ---------- */
 function contar(campo) {
@@ -891,6 +896,7 @@ function filtrar() {
     if (S.soloNuevas && !NOVEDADES.has(m.id)) return false;
     if (S.soloFavs && !FAVS.has(m.id)) return false;
     if (S.soloDirecta && !m.videoId) return false;
+    if (S.soloSeries && !esSerie(m)) return false;
     return true;
   });
   const ord = {
@@ -909,7 +915,7 @@ function filtrar() {
 }
 const hayFiltros = () => S.q.trim() || S.generos.size || S.paises.size || S.decadas.size || S.tipos.size ||
   S.idiomas.size || S.directores.size || S.imdbMin || S.soloNuevas || S.soloFavs || S.soloDirecta ||
-  S.anioMin || S.anioMax;
+  S.soloSeries || S.anioMin || S.anioMax;
 
 /* Los enlaces de imagen de ok.ru van firmados y caducan con el tiempo: cuando
    uno devuelve 410 se marca el contenedor para que dibuje su propio fondo. */
@@ -974,6 +980,8 @@ function construirFilas() {
   if (nuevas.length) html.push(fila(`✦ Novedades desde tu última visita`, nuevas, JSON.stringify({ soloNuevas: true })));
   if (FAVS.size) html.push(fila('♥ Mi lista', M.filter(m => FAVS.has(m.id)), JSON.stringify({ soloFavs: true })));
   html.push(fila('Añadidas recientemente', recientes));
+  html.push(fila('📺 Series y miniseries', [...M].filter(esSerie).slice(0, 32),
+    JSON.stringify({ soloSeries: true })));
   html.push(fila('Mejor valoradas en IMDb', top, JSON.stringify({ imdbMin: 7.5 })));
 
   // Un carrusel por cada género importante
@@ -1028,7 +1036,8 @@ function pintarGrid(reset) {
     const n = gridData.length;
     const q = S.q.trim();
     $('#res-title').innerHTML = q ? `<span class="term">“${esc(q)}”</span>`
-      : (S.soloNuevas ? 'Novedades' : S.soloFavs ? 'Mi lista' : 'Explorar catálogo');
+      : (S.soloNuevas ? 'Novedades' : S.soloFavs ? 'Mi lista'
+        : S.soloSeries ? 'Series y miniseries' : 'Explorar catálogo');
     // buscando, el orden por defecto es la relevancia; sin buscar, la fecha
     $('#sort').options[0].textContent = q ? 'Más relevantes' : 'Añadidas primero';
     // Marcador visible: dice sin rodeos si la búsqueda encontró algo
@@ -1072,6 +1081,7 @@ function pintarChipsActivos() {
   if (S.anioMin) add('Desde', S.anioMin, JSON.stringify(['anioMin']));
   if (S.anioMax) add('Hasta', S.anioMax, JSON.stringify(['anioMax']));
   if (S.soloDirecta) add('Sólo', 'reproducción directa', JSON.stringify(['soloDirecta']));
+  if (S.soloSeries) add('Sólo', 'series', JSON.stringify(['soloSeries']));
   $('#active-filters').innerHTML = chips.join('');
   const n = chips.length;
   $('#f-count').style.display = n ? '' : 'none';
@@ -1435,12 +1445,14 @@ const App = {
     if (hay) pintarGrid(true); else { pintarChipsActivos(); }
     $('#btn-new').classList.toggle('on', S.soloNuevas);
     $('#btn-fav').classList.toggle('on', S.soloFavs);
+    $('#btn-series').classList.toggle('on', S.soloSeries);
     actualizarContadoresGrupo();
   },
   home() {
     S.q = ''; $('#q').value = '';
     ['generos', 'paises', 'decadas', 'tipos', 'idiomas', 'directores'].forEach(k => S[k].clear());
-    S.imdbMin = 0; S.soloNuevas = S.soloFavs = S.soloDirecta = false; S.anioMin = S.anioMax = null;
+    S.imdbMin = 0; S.soloNuevas = S.soloFavs = S.soloDirecta = S.soloSeries = false;
+    S.anioMin = S.anioMax = null;
     construirFiltros(); this.aplicar(); scrollTo({ top: 0, behavior: 'smooth' });
   },
   clearFilters() { this.home(); },
@@ -1488,6 +1500,7 @@ const App = {
   closeFilters() { $('#filters').classList.remove('open'); $('#scrim').classList.remove('on'); },
   toggleNovedades() { S.soloNuevas = !S.soloNuevas; if (S.soloNuevas) S.soloFavs = false; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
   toggleFavs() { S.soloFavs = !S.soloFavs; if (S.soloFavs) S.soloNuevas = false; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
+  toggleSeries() { S.soloSeries = !S.soloSeries; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
   closeModal() {
     $('#modal').classList.remove('open'); $('#sheet').innerHTML = '';
     document.body.style.overflow = ''; ponerHash(null);
