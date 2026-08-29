@@ -843,8 +843,13 @@ const S = {
 };
 
 /* Serie, miniserie o serie documental: todo lo que se ve por capítulos. El panel
-   de filtros permite afinar por tipo exacto; esto es el atajo de la barra. */
+   de filtros permite afinar por tipo exacto; esto es el atajo de la barra.
+   Las dos mitades del catálogo van completamente separadas: en Películas no
+   asoma ninguna serie, y al revés. Cada una tiene su portada y sus filas. */
 const esSerie = m => /serie/i.test(m.tipo || '');
+const SERIES = M.filter(esSerie);
+const PELIS = M.filter(m => !esSerie(m));
+const baseActual = () => (S.soloSeries ? SERIES : PELIS);
 
 /* ---------- facetas ---------- */
 function contar(campo) {
@@ -882,7 +887,8 @@ function filtrar() {
   const q = fold(S.q).trim();
   const terms = q ? q.split(/\s+/).filter(Boolean) : [];
   const coincide = (m, t) => debil(t) ? m._t.includes(t) : m._s.includes(t);
-  let out = M.filter(m => {
+  // Se busca y se filtra dentro de la mitad en la que estés, nunca en las dos
+  let out = baseActual().filter(m => {
     if (terms.length && !terms.every(t => coincide(m, t))) return false;
     if (S.generos.size && !(m.generos || []).some(g => S.generos.has(g))) return false;
     if (S.paises.size && !(m.paises || []).some(p => S.paises.has(p))) return false;
@@ -896,7 +902,6 @@ function filtrar() {
     if (S.soloNuevas && !NOVEDADES.has(m.id)) return false;
     if (S.soloFavs && !FAVS.has(m.id)) return false;
     if (S.soloDirecta && !m.videoId) return false;
-    if (S.soloSeries && !esSerie(m)) return false;
     return true;
   });
   const ord = {
@@ -913,9 +918,11 @@ function filtrar() {
   const peso = new Map(out.map(m => [m, relevancia(m, q, terms)]));
   return out.sort((a, b) => peso.get(a) - peso.get(b) || ord(a, b));
 }
+/* «Series» no cuenta como filtro: es una sección con su propia portada, igual que
+   Películas. Lo que decide entre portada y rejilla es el resto. */
 const hayFiltros = () => S.q.trim() || S.generos.size || S.paises.size || S.decadas.size || S.tipos.size ||
   S.idiomas.size || S.directores.size || S.imdbMin || S.soloNuevas || S.soloFavs || S.soloDirecta ||
-  S.soloSeries || S.anioMin || S.anioMax;
+  S.anioMin || S.anioMax;
 
 /* Los enlaces de imagen de ok.ru van firmados y caducan con el tiempo: cuando
    uno devuelve 410 se marca el contenedor para que dibuje su propio fondo. */
@@ -970,35 +977,67 @@ function fila(titulo, lista, extra = '') {
   </section>`;
 }
 
-function construirFilas() {
-  const nuevas = M.filter(m => NOVEDADES.has(m.id));
-  const recientes = M.slice(0, 32);
-  const top = [...M].filter(m => m.imdb >= 7.5).sort((a, b) => b.imdb - a.imdb).slice(0, 32);
-  const clasicos = [...M].filter(m => m.anio && m.anio < 1970).sort((a, b) => b.imdb - a.imdb).slice(0, 32);
+/* Cuenta valores sobre la lista que se le pase, para poder armar las filas de un
+   subconjunto (las series) igual que las del catálogo entero. */
+function facetas(base, campo) {
+  const c = new Map();
+  for (const m of base) {
+    const v = m[campo];
+    if (Array.isArray(v)) v.forEach(x => c.set(x, (c.get(x) || 0) + 1));
+    else if (v != null && v !== '') c.set(v, (c.get(v) || 0) + 1);
+  }
+  return [...c.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+/* La portada. Se arma sobre `base` para que Series tenga la suya propia: mismas
+   secciones, mismo aspecto, pero contando sólo lo que hay dentro. Los umbrales
+   bajan cuando la base es pequeña; con los del catálogo entero (8 por género,
+   25 por década) las series se quedaban casi sin filas. */
+function construirFilas(base = M) {
+  const seccion = base === M ? 'catalogo' : 'series';
+  const chico = base.length < 1000;
+  const minGenero = chico ? 4 : 8, minPais = chico ? 4 : 10, minDecada = chico ? 6 : 25;
+  const Fb = seccion === 'catalogo'
+    ? F
+    : { generos: facetas(base, 'generos'), paises: facetas(base, 'paises'), decadas: facetas(base, 'decada').sort((a, b) => b[0] - a[0]) };
+
+  const nuevas = base.filter(m => NOVEDADES.has(m.id));
+  const recientes = base.slice(0, 32);
+  const top = [...base].filter(m => m.imdb >= 7.5).sort((a, b) => b.imdb - a.imdb).slice(0, 32);
+  const clasicos = [...base].filter(m => m.anio && m.anio < 1970).sort((a, b) => b.imdb - a.imdb).slice(0, 32);
   const html = [];
 
   if (nuevas.length) html.push(fila(`✦ Novedades desde tu última visita`, nuevas, JSON.stringify({ soloNuevas: true })));
-  if (FAVS.size) html.push(fila('♥ Mi lista', M.filter(m => FAVS.has(m.id)), JSON.stringify({ soloFavs: true })));
+  if (seccion === 'catalogo' && FAVS.size) {
+    html.push(fila('♥ Mi lista', base.filter(m => FAVS.has(m.id)), JSON.stringify({ soloFavs: true })));
+  }
   html.push(fila('Añadidas recientemente', recientes));
-  html.push(fila('📺 Series y miniseries', [...M].filter(esSerie).slice(0, 32),
-    JSON.stringify({ soloSeries: true })));
+  if (seccion !== 'catalogo') {
+    // Dentro de Series, una fila por cada formato. Los plurales van a mano: con
+    // añadir una «s» salía «Serie documentals».
+    const plural = { 'Serie': 'Series', 'Miniserie': 'Miniseries', 'Serie documental': 'Series documentales' };
+    for (const t of ['Serie', 'Miniserie', 'Serie documental']) {
+      const lista = base.filter(m => m.tipo === t);
+      if (lista.length >= 6) html.push(fila(plural[t], lista, JSON.stringify({ tipos: [t] })));
+    }
+  }
   html.push(fila('Mejor valoradas en IMDb', top, JSON.stringify({ imdbMin: 7.5 })));
 
   // Un carrusel por cada género importante
-  for (const [g, n] of F.generos.slice(0, 10)) {
-    if (n < 8) continue;
-    html.push(fila(g, M.filter(m => (m.generos || []).includes(g)), JSON.stringify({ generos: [g] })));
+  for (const [g, n] of Fb.generos.slice(0, 10)) {
+    if (n < minGenero) continue;
+    html.push(fila(g, base.filter(m => (m.generos || []).includes(g)), JSON.stringify({ generos: [g] })));
   }
-  html.push(fila('Clásicos anteriores a 1970', clasicos, JSON.stringify({ anioMax: 1969 })));
+  if (clasicos.length >= 6) html.push(fila('Clásicos anteriores a 1970', clasicos, JSON.stringify({ anioMax: 1969 })));
   // Un carrusel por país destacado
-  for (const [p, n] of F.paises.slice(1, 7)) {
-    if (n < 10) continue;
-    html.push(fila(`Cine de ${p}`, M.filter(m => (m.paises || []).includes(p)), JSON.stringify({ paises: [p] })));
+  for (const [p, n] of Fb.paises.slice(1, 7)) {
+    if (n < minPais) continue;
+    html.push(fila(`Cine de ${p}`, base.filter(m => (m.paises || []).includes(p)), JSON.stringify({ paises: [p] })));
   }
   // Décadas
-  for (const [d, n] of F.decadas) {
-    if (n < 25 || !d) continue;
-    html.push(fila(`Los ${d}`, M.filter(m => m.decada === d), JSON.stringify({ decadas: [d] })));
+  for (const [d, n] of Fb.decadas) {
+    if (n < minDecada || !d) continue;
+    html.push(fila(`Los ${d}`, base.filter(m => m.decada === d), JSON.stringify({ decadas: [d] })));
   }
   $('#rows-view').innerHTML = html.join('');
 }
@@ -1152,7 +1191,7 @@ function actualizarContadoresGrupo() {
 // 9 segundos era poco: daba tiempo justo a leer el título y ya cambiaba
 const HERO_MS = 16000;
 let heroList = [], heroI = 0, heroTimer = null;
-function construirHero() {
+function construirHero(base = M) {
   /* El héroe se reparte en tres cajones para que no sea siempre lo mismo:
      3 novedades + 2 joyas del catálogo + 1 infantil. Antes sólo salían novedades
      bien valoradas, así que un clásico no asomaba nunca por bueno que fuera.
@@ -1174,20 +1213,20 @@ function construirHero() {
   const elegidas = new Map();
   const meter = (pelis) => pelis.forEach(m => elegidas.set(m.id, m));
 
-  meter(alAzar(M.filter(m => luce(m) && m.imdb >= 7).slice(0, 40), 3));           // novedades
-  meter(alAzar(M.filter(m => luce(m) && paraNiños(m) && m.imdb >= 6.5), 1));      // una para peques
-  meter(alAzar([...M].filter(m => luce(m) && m.imdb >= 8 && !elegidas.has(m.id))
-                     .sort((a, b) => b.imdb - a.imdb).slice(0, 60), 2));          // joyas
+  meter(alAzar(base.filter(m => luce(m) && m.imdb >= 7).slice(0, 40), 3));           // novedades
+  meter(alAzar(base.filter(m => luce(m) && paraNiños(m) && m.imdb >= 6.5), 1));      // una para peques
+  meter(alAzar([...base].filter(m => luce(m) && m.imdb >= 8 && !elegidas.has(m.id))
+                        .sort((a, b) => b.imdb - a.imdb).slice(0, 60), 2));          // joyas
 
   heroList = alAzar([...elegidas.values()], 6);
   // Por si algún cajón se queda vacío, se completa con lo más reciente
   if (heroList.length < 6) {
-    for (const m of M.filter(luce)) {
+    for (const m of base.filter(luce)) {
       if (heroList.length >= 6) break;
       if (!heroList.some(x => x.id === m.id)) heroList.push(m);
     }
   }
-  if (!heroList.length) heroList = M.slice(0, 5);
+  if (!heroList.length) heroList = base.slice(0, 5);
   $('#hero').hidden = false;
   // El vitral se arma una sola vez; luego sólo se recolocan las láminas.
   $('#hero-vitral').innerHTML = heroList.map((m, i) =>
@@ -1431,8 +1470,17 @@ function reproducir(vid) {
 }
 
 /* ---------- API pública ---------- */
+let seccionActual = null;
 const App = {
   aplicar() {
+    // Al saltar entre Películas y Series hay que rehacer portada y héroe: son dos
+    // secciones distintas, cada una con sus filas y sus destacadas.
+    const seccion = S.soloSeries ? 'series' : 'pelis';
+    if (seccion !== seccionActual) {
+      seccionActual = seccion;
+      construirFilas(baseActual());
+      construirHero(baseActual());
+    }
     const hay = !!hayFiltros();
     $('#rows-view').hidden = hay;
     $('#hero').hidden = hay;
@@ -1449,7 +1497,7 @@ const App = {
     actualizarContadoresGrupo();
   },
   home() {
-    S.q = ''; $('#q').value = '';
+    S.q = ''; $('#q').value = ''; S.soloSeries = false;
     ['generos', 'paises', 'decadas', 'tipos', 'idiomas', 'directores'].forEach(k => S[k].clear());
     S.imdbMin = 0; S.soloNuevas = S.soloFavs = S.soloDirecta = S.soloSeries = false;
     S.anioMin = S.anioMax = null;
@@ -1709,11 +1757,9 @@ function avisoNovedades() {
 /* ---------- arranque ---------- */
 $('#new-count').textContent = NOVEDADES.size;
 $('#btn-new').style.display = NOVEDADES.size ? '' : 'none';
-construirHero();
-construirFilas();
 construirTicker();
 construirFiltros();
-App.aplicar();
+App.aplicar();   // arma portada y héroe de la sección que toque
 // Si se ha llegado con un enlace directo, se abre lo que toque
 if (idDelHash()) abrirModal(idDelHash(), false);
 else if (location.hash === '#cafe') App.abrirCafe();
