@@ -541,7 +541,9 @@ select.sel option{background:#12151f;color:#f2f3f7}
   #modal .sheet{max-height:100vh;height:100vh;border-radius:0;
     padding-top:max(18px,env(safe-area-inset-top))}
   #modal .hd{border-radius:0}
-  #modal .close-x{top:max(20px,calc(env(safe-area-inset-top) + 10px))}
+  /* A pantalla completa la X quedaba rozando el borde: se baja para que respire
+     y no compita con la hora ni la muesca del móvil. */
+  #modal .close-x{top:max(30px,calc(env(safe-area-inset-top) + 20px));right:18px}
 }
 @media(max-width:640px){
   /* La barra no cabe en una fila: el buscador pasa a la suya y los botones
