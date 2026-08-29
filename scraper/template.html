@@ -1229,7 +1229,7 @@ function construirHero(base = M) {
   });
 
   meter(alAzar(base.filter(m => luce(m) && m.imdb >= 7).slice(0, 40), 3), 'Recién añadida');
-  meter(alAzar(base.filter(m => luce(m) && paraNiños(m) && m.imdb >= 6.5), 1), 'Para los peques');
+  meter(alAzar(base.filter(m => luce(m) && paraNiños(m) && m.imdb >= 6.5), 1), 'Familiar');
   meter(alAzar([...base].filter(m => luce(m) && m.imdb >= 8 && !elegidas.has(m.id))
                         .sort((a, b) => b.imdb - a.imdb).slice(0, 60), 2),
         m => (m.anio && m.anio < 1975 ? 'Clásico' : 'Mejor valorada'));
@@ -1301,8 +1301,11 @@ function pintarHero(i) {
   const img = m.poster || m.thumb || '';
   $('#hero .bg').style.backgroundImage = `url('${img}')`;
   colocarVitral(i);
-  // «Novedad» manda sobre lo demás: si no la habías visto, eso es lo que interesa
-  $('#hero-eyebrow').textContent = NOVEDADES.has(m.id)
+  /* «Novedad» habla de la película: estrenada hace dos años o menos. «Recién
+     añadida» habla del catálogo: hace poco que está aquí, aunque sea de 1942.
+     Son cosas distintas y antes se confundían. */
+  const reciente = m.anio && m.anio >= new Date().getFullYear() - 2;
+  $('#hero-eyebrow').textContent = reciente
     ? 'Novedad' : (heroMotivo.get(m.id) || 'Destacada');
   $('#hero-title').textContent = m.titulo;
   $('#hero-orig').textContent = m.tituloAlt && m.tituloOriginal !== m.titulo ? 'Título original: ' + m.tituloOriginal : '';

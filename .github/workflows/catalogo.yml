@@ -215,6 +215,14 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add scraper/raw.jsonl
           git commit -m "Datos al dia (${{ steps.modo.outputs.modo }}): ${{ steps.resumen.outputs.titulos }} titulos [skip ci]"
+          # Renovar las portadas lleva media hora, y en ese rato alguien puede haber
+          # empujado a main. Sin reintento, el empujón se rechazaba y se perdía todo
+          # el trabajo — pasó de verdad: 5.929 enlaces renovados tirados a la basura.
+          for intento in 1 2 3; do
+            if git push; then echo 'raw.jsonl guardado'; exit 0; fi
+            echo "empujón rechazado (alguien escribió mientras corría); me pongo al día e insisto"
+            git pull --rebase origin "$GITHUB_REF_NAME"
+          done
           git push
 
       # Puente para n8n (o Discord, Slack, lo que sea): si existe el secreto
