@@ -536,8 +536,12 @@ select.sel option{background:#12151f;color:#f2f3f7}
   #hero{min-height:340px}
   #hero .inner{max-width:100%}
   #modal{padding:0}
-  #modal .sheet{max-height:100vh;height:100vh;border-radius:0}
+  /* A pantalla completa la ficha llegaba pegada al borde de arriba, debajo de la
+     hora y la muesca del móvil. Se le reserva ese hueco. */
+  #modal .sheet{max-height:100vh;height:100vh;border-radius:0;
+    padding-top:max(18px,env(safe-area-inset-top))}
   #modal .hd{border-radius:0}
+  #modal .close-x{top:max(20px,calc(env(safe-area-inset-top) + 10px))}
 }
 @media(max-width:640px){
   /* La barra no cabe en una fila: el buscador pasa a la suya y los botones
@@ -1596,8 +1600,15 @@ document.addEventListener('click', e => {
   if (t.dataset.gen) { App.closeModal(); App.set({ generos: [t.dataset.gen] }); return; }
   if (t.dataset.pais) { App.closeModal(); App.set({ paises: [t.dataset.pais] }); return; }
   if (t.dataset.dec) { App.closeModal(); App.set({ decadas: [+t.dataset.dec] }); return; }
+  // En el vitral: la de los lados pasa al frente, y la que ya está delante abre
+  // su ficha. Es lo que se espera al tocar el cartel principal.
   const lam = t.closest('[data-h]');
-  if (lam) { pintarHero(+lam.dataset.h); return; }
+  if (lam) {
+    const i = +lam.dataset.h;
+    if (i === heroI) abrirModal(heroList[i].id, false, lam.querySelector('img'));
+    else pintarHero(i);
+    return;
+  }
 });
 
 /* filtrar las listas largas del panel (país, director) */

@@ -6,6 +6,19 @@ import { crearClasificador } from './clasificar.mjs';
 
 const C = crearClasificador();
 
+/* Erratas que vienen mal desde ok.ru y que no hay parseo que las salve: se
+   corrigen a mano por id. Los campos que empiezan por «_» son comentarios. */
+const CORRECCIONES = fs.existsSync('correcciones.json')
+  ? JSON.parse(fs.readFileSync('correcciones.json', 'utf8')) : {};
+let corregidas = 0;
+const corregir = (m) => {
+  const arreglo = CORRECCIONES[m.id];
+  if (!arreglo) return m;
+  for (const [k, v] of Object.entries(arreglo)) if (!k.startsWith('_')) m[k] = v;
+  corregidas++;
+  return m;
+};
+
 const raw = fs.readFileSync('raw.jsonl', 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
 const vistos = new Set();
 const movies = [];
@@ -24,7 +37,7 @@ for (const r of raw) {
   const m = C.construirPelicula(r);
   if (!m) { descartados++; continue; }
   if (!reproducible(m)) { sinFuente++; continue; }
-  movies.push(m);
+  movies.push(corregir(m));
 }
 
 movies.sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
@@ -39,7 +52,8 @@ const meta = {
 };
 fs.writeFileSync('movies.json', JSON.stringify({ meta, movies }));
 console.log('películas:', movies.length, '| no eran fichas:', descartados,
-  '| fuera por no tener dónde verlas:', sinFuente);
+  '| fuera por no tener dónde verlas:', sinFuente,
+  '| corregidas a mano:', corregidas);
 console.log('con año:', movies.filter((m) => m.anio).length,
   '| con país:', movies.filter((m) => m.paises.length).length,
   '| con género:', movies.filter((m) => m.generos.length).length,

@@ -217,7 +217,12 @@ export function crearClasificador() {
     // «temporada») se colaban títulos legítimos — «El guardia del subSUELO», «La
     // TEMPORADA del diablo», «Un lugar en ninguna PARTE» — que perdían su
     // traducción o acababan mostrándose con la nota como título.
-    const NOTA_VERSION = /subtitul|english\s+subtitle/i;
+    // «temporada» exige número a propósito: a secas se colaban títulos legítimos
+    // como «La temporada del diablo». Y aquí NO valen «parte N» ni «vol N», por
+    // mucho que parezcan notas: son parte del título en «Viernes 13 parte 7: La
+    // nueva sangre» o «Black Angel vol. 2», y tratarlos como nota se cargaba la
+    // traducción de quince fichas.
+    const NOTA_VERSION = /subtitul|english\s+subtitle|\btemporadas?\s*\d/i;
 
     let director = resto, notas = '';
     const nm = /^(.*?)\s*\(([^()]*)\)\s*$/.exec(resto);

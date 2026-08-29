@@ -8,9 +8,8 @@ name: Catálogo
 
 on:
   schedule:
-    - cron: '17 6 * * *'      # cada día: buscar novedades
-    - cron: '11 12 * * 5'     # viernes: novedades + resumen por correo
-    - cron: '13 4 * * 0'      # cada domingo: mantenimiento de los pósters
+    - cron: '17 6 * * *'      # cada día: novedades + repaso de portadas
+    - cron: '11 12 * * 5'     # viernes: lo mismo + resumen por correo
   workflow_dispatch:
     inputs:
       modo:
@@ -59,8 +58,6 @@ jobs:
         run: |
           if [ -n "${{ inputs.modo }}" ]; then
             modo="${{ inputs.modo }}"
-          elif [ "${{ github.event.schedule }}" = "13 4 * * 0" ]; then
-            modo=posters
           elif [ "${{ github.event.schedule }}" = "11 12 * * 5" ]; then
             modo=resumen
           elif [ "${{ github.event_name }}" = "push" ]; then
@@ -75,6 +72,17 @@ jobs:
         if: steps.modo.outputs.modo == 'novedades' || steps.modo.outputs.modo == 'resumen'
         working-directory: scraper
         run: node actualizar.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"
+
+      # Los enlaces de imagen de ok.ru caducan por tandas, cada día muere la de ese
+      # día del año anterior. Semanal dejaba portadas rotas a la vista hasta seis
+      # días; comprobarlas a diario cuesta unos minutos y cierra ese hueco.
+      - name: Repasar las portadas
+        if: steps.modo.outputs.modo == 'novedades' || steps.modo.outputs.modo == 'resumen'
+        working-directory: scraper
+        env:
+          MANTENIMIENTO: '1'
+          DIAS: '330'
+        run: node refrescar-posters.mjs 2>&1 | tail -20
 
       # Mantenimiento semanal: renueva lo que ya está caído y, sobre todo, lo que
       # está a punto de caducar según `imageAt`. Adelantarse evita que se vea

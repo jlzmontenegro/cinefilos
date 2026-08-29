@@ -1,0 +1,14 @@
+{
+  "_leeme": [
+    "Arreglos a mano para erratas que vienen mal en la publicación de ok.ru y que",
+    "ningún parseo puede adivinar. La clave es el id del post; dentro van sólo los",
+    "campos a sustituir. Se aplican en normalize.mjs, después de clasificar.",
+    "Si algún día se corrige el post en origen, basta con borrar la entrada."
+  ],
+
+  "157086164572373": {
+    "_nota": "el post escribe «a través deñ multiverso»",
+    "tituloAlt": "El hombre araña: a través del multiverso",
+    "titulo": "El hombre araña: a través del multiverso"
+  }
+}
