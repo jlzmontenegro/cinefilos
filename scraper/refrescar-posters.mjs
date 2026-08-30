@@ -75,6 +75,42 @@ async function imagenViva(url) {
   }
 }
 
+/* Último recurso. `fetchHead` corta la página en cuanto encuentra el ld+json —unos
+   16 KB de 240— y a veces el enlace que hay ahí está caducado mientras la carátula
+   sigue viva más abajo, en el cuerpo del post. Cuando el camino normal no da nada,
+   se baja la página entera y se busca el cartel entre todas las imágenes: se
+   reconoce porque es vertical y pesa (los avatares son cuadraditos de 1-4 KB). */
+function tamJpeg(buf) {
+  if (buf[0] !== 0xFF || buf[1] !== 0xD8) return null;
+  let i = 2;
+  while (i < buf.length - 9) {
+    if (buf[i] !== 0xFF) { i++; continue; }
+    const mk = buf[i + 1];
+    if (mk >= 0xC0 && mk <= 0xCF && mk !== 0xC4 && mk !== 0xC8 && mk !== 0xCC)
+      return { w: buf.readUInt16BE(i + 7), h: buf.readUInt16BE(i + 5) };
+    i += 2 + buf.readUInt16BE(i + 2);
+  }
+  return null;
+}
+
+async function rescatarPortada(id) {
+  try {
+    const r = await fetch(`https://ok.ru/${GROUP}/topic/${id}`,
+      { headers: { 'User-Agent': UA, 'Accept-Language': 'es-ES,es;q=0.9', Accept: 'text/html' } });
+    if (!r.ok) return null;
+    const html = (await r.text()).replace(/\\u0026/g, '&').replace(/\\\//g, '/').replace(/&amp;/g, '&');
+    const urls = [...new Set([...html.matchAll(/https:\/\/i\.okcdn\.ru\/i\?r=[^"'\s\\<>)]+/g)].map(x => x[0]))];
+    for (const u of urls) {
+      const res = await fetch(u, { headers: { 'User-Agent': UA, Accept: 'image/*,*/*' } });
+      if (res.status !== 200) continue;
+      const buf = Buffer.from(await res.arrayBuffer());
+      const t = tamJpeg(buf);
+      if (t && t.h > t.w && buf.length > 10000) return u;
+    }
+  } catch {}
+  return null;
+}
+
 const lineas = fs.readFileSync(OUT, 'utf8').split('\n').filter(Boolean);
 const registros = lineas.map(l => JSON.parse(l));
 const conImagen = registros.filter(r => r.image);
@@ -116,16 +152,19 @@ if (!porRenovar.length) { console.log('\nNo hay nada que refrescar.'); process.e
 
 console.log(`\nVolviendo a leer ${porRenovar.length} publicaciones para conseguir enlaces nuevos…`);
 const porId = new Map(registros.map(r => [r.id, r]));
-let arregladas = 0, sinImagen = 0, perdidas = 0, n = 0;
+let arregladas = 0, sinImagen = 0, perdidas = 0, rescatadas = 0, n = 0;
 
 await enTandas(porRenovar, CONCURRENCIA, async (r) => {
   try {
     const { html, status } = await fetchHead(`https://ok.ru/${GROUP}/topic/${r.id}`);
     if (status === 404) { perdidas++; return; }
     const nuevo = parseTopic(html);
-    if (nuevo?.image && nuevo.image !== r.image) {
+    let url = (nuevo?.image && nuevo.image !== r.image) ? nuevo.image : null;
+    // Si por ahí no sale nada, se busca en la página entera antes de rendirse
+    if (!url) { url = await rescatarPortada(r.id); rescatadas += url ? 1 : 0; }
+    if (url && url !== r.image) {
       const reg = porId.get(r.id);
-      reg.image = nuevo.image;
+      reg.image = url;
       // Cuándo se pidió este enlace: es lo que permite renovar por adelantado
       // en lugar de esperar a que se rompa.
       reg.imageAt = new Date().toISOString();
@@ -141,7 +180,8 @@ await enTandas(porRenovar, CONCURRENCIA, async (r) => {
   }
 });
 
-console.log(`\nrenovadas: ${arregladas} · sin enlace nuevo: ${sinImagen} · no accesibles: ${perdidas}`);
+console.log(`\nrenovadas: ${arregladas} (${rescatadas} rescatadas de la página entera)` +
+  ` · sin enlace nuevo: ${sinImagen} · no accesibles: ${perdidas}`);
 
 if (arregladas) {
   // Se escribe a un temporal y se renombra: si algo falla a mitad, raw.jsonl
