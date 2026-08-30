@@ -218,6 +218,37 @@ La lección: los patrones se calibran **con los datos delante**, no de memoria. 
 notas de versión que existen de verdad son ocho y todas hablan de subtítulos; por eso
 `NOTA_VERSION` es tan estrecha. Y `temporada` exige número detrás.
 
+### Un género por ficha: gana el que se nombra primero
+
+`generos()` devolvía **todos** los que aparecieran, y 1.666 fichas —el 42 % de las
+que tienen género— salían en dos sitios a la vez: la misma película en Terror y en
+Thriller, Top Gun en Acción y en Romance. Ahora se queda con uno solo.
+
+El desempate no es arbitrario. Los géneros no se buscan en toda la sinopsis, sino en
+la **cláusula definitoria** (`clausulaDefinitoria()`: el «es una película X de Y»
+cortado antes de «dirigida por»), y ahí el principal va delante: «de **acción**,
+drama y romance» (Top Gun), «***thriller*** policial de cine negro», «**comedia**
+dramática y misterio». En español el núcleo va primero y lo de detrás lo matiza. Se
+revisaron 45 fichas repartidas por el catálogo y las 45 eligen bien.
+
+Que la búsqueda se limite a esa cláusula es también lo que hace inofensivo el
+`includes` sin límites de palabra: en la sinopsis entera `accion` engancharía
+«atr**acción**», «re**acción**», y `gore` al director Gre**gore**tti; dentro de la
+cláusula esos falsos positivos son **cero**.
+
+Consecuencias medidas, por si extrañan:
+
+- **Psicológico pasa de 197 a 0** y desaparece del filtro. Nunca es el núcleo:
+  siempre «thriller psicológico», «terror psicológico». Igual Familiar (5→0) y
+  Neorrealismo (1→0). El panel baja de 38 opciones de género a 35.
+- Los adjetivos encogen —Romance 212→42, Policíaca 312→92, Histórica 139→44— y los
+  núcleos se quedan casi enteros: Drama 1.346→1.053, Documental 445→438.
+- Las filas de género de la portada bajan de 31 a 23 en Películas y de 14 a 11 en
+  Series. La plaza «Familiar» del héroe sigue teniendo 35 candidatas.
+- Lo que se pierde es alcance del filtro: buscar «Terror» ya no saca los 85 títulos
+  descritos como «thriller de terror». El buscador sí los encuentra, porque el
+  índice `_s` incluye la sinopsis entera.
+
 ### Erratas del origen: `correcciones.json`
 
 Cuando la publicación de ok.ru viene mal escrita no hay parseo que la salve — el post
@@ -280,7 +311,7 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
 
 ### El panel de filtros
 
-Nueve grupos: Género (38 opciones), Década (12), País (75), Años, Valoración, Director
+Nueve grupos: Género (35 opciones), Década (12), País (75), Años, Valoración, Director
 (1.046), Tipo, Idioma y Otros. Con todos desplegados a la vez el panel medía **1.926 px
 de alto contra 555 visibles** —tres pantallas y media— y sólo los géneros llenaban lo
 que se veía: para llegar a «Década» había que pasar 38 géneros y 75 países.
@@ -302,6 +333,12 @@ Ahora cada grupo es un `<details class="fgroup">`. Lo que hay que respetar si se
   (`translateY`), hasta `88vh`, con tirador y el botón «Ver N títulos» al alcance del
   pulgar. Y `overscroll-behavior:contain` en `.body` y en `.scrolly`, que si no el
   gesto sigue arrastrando la página de detrás al llegar al final de la lista.
+- **Abrir el panel congela el fondo** (`body{overflow:hidden}`, igual que la ficha) y
+  le pone a `body` la clase `panel-abierto`. Sin lo primero, en el móvil la hoja tapa
+  casi toda la pantalla y el dedo seguía arrastrando el catálogo de detrás. Lo segundo
+  aparta el aviso de novedades: `#toast` va a `z-index:120` y aterrizaba justo encima
+  del botón «Ver N títulos», tapándolo entero en el móvil y a medias en escritorio.
+  `closeFilters()` sólo suelta el `overflow` si no hay una ficha abierta.
 
 ### Probar otra interfaz sin arriesgar la buena
 

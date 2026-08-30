@@ -143,11 +143,23 @@ export function crearClasificador() {
     ['supervivencia', 'Supervivencia'], ['satir', 'Sátira'], ['parodia', 'Sátira'],
     ['surrealis', 'Surrealismo'], ['neorrealis', 'Neorrealismo'], ['mudo', 'Cine mudo'],
   ];
+  /* Una ficha, un género. Antes se devolvían todos los que se nombraran y la misma
+     película salía a la vez en Terror y en Thriller, o Top Gun en Acción y en
+     Romance. Gana el que aparece primero, y no es un desempate arbitrario: la
+     cláusula definitoria de estas fichas enumera el género principal delante —
+     «de acción, drama y romance» (Top Gun), «thriller policial de cine negro»,
+     «comedia dramática y misterio»—, y en español lo que va detrás matiza al
+     núcleo. Comprobado sobre las 1.666 fichas que tenían más de uno.
+     Se devuelve lista de uno para no cambiar la forma del campo: los filtros, las
+     filas y el compactado por columnas siguen funcionando igual. */
   function generos(texto) {
     const t = fold(texto);
-    const found = new Set();
-    for (const [k, g] of GENEROS) if (t.includes(k)) found.add(g);
-    return [...found];
+    let principal = null, antes = Infinity;
+    for (const [k, g] of GENEROS) {
+      const i = t.indexOf(k);
+      if (i >= 0 && i < antes) { antes = i; principal = g; }
+    }
+    return principal ? [principal] : [];
   }
 
   // ---------- tipo de obra ----------
