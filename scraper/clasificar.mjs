@@ -347,8 +347,14 @@ export function crearClasificador() {
     out.comments = art.commentCount ?? 0;
 
     const img = Array.isArray(art.image) ? art.image[0] : art.image;
+    /* Cuando la publicación no lleva foto, ok.ru pone de portada un fotograma del
+       vídeo, y esa URL viaja por el HTML con las entidades escapadas:
+       `?id=1&amp;type=32`. Guardada tal cual, el servidor la rechaza con un 400 y
+       la ficha se queda sin carátula pareciendo que no la tiene. Hay que
+       desescaparla. Sólo pasa en las que tiran de fotograma: siete fichas. */
     const ogImg = /<meta (?:property|name)="og:image" content="([^"]*)"/.exec(html);
-    out.image = img?.contentUrl || (ogImg ? ogImg[1] : null);
+    const desescapar = (u) => u && u.replace(/&amp;/g, '&').replace(/&#38;/g, '&');
+    out.image = desescapar(img?.contentUrl || (ogImg ? ogImg[1] : null));
 
     const vid = Array.isArray(art.video) ? art.video[0] : art.video;
     if (vid) {
