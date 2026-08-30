@@ -1322,7 +1322,7 @@ function construirFiltros() {
     ${/* Los 38 géneros abiertos llenaban por sí solos toda la pantalla y volvían a
           esconder el resto de grupos; con tope propio se ve el mapa completo. */''}
     ${grupo('generos', 'Género', grupoOpts('generos', F.generos, { scroll: true }), { abierto: true })}
-    ${grupo('decadas', 'Década', grupoOpts('decadas', F.decadas, { fmt: d => d + 's' }), { abierto: true })}
+    ${grupo('decadas', 'Década', grupoOpts('decadas', F.decadas, { fmt: d => d + 's' }))}
     ${grupo('paises', 'País', grupoOpts('paises', F.paises, { buscador: true }))}
     ${grupo('anios', 'Años', `
       <div class="rng"><span>Desde</span>

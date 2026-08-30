@@ -295,8 +295,9 @@ Ahora cada grupo es un `<details class="fgroup">`. Lo que hay que respetar si se
   enlace de género…). Cierra el panel entero si no se recuerda qué estaba abierto: por
   eso `grupo()` consulta el DOM viejo, que todavía está en pie mientras se arma la
   plantilla. Y un grupo con filtros puestos se abre solo.
-- **Género también lleva `scroll:true`.** Sólo con plegar no bastaba: abierto por
-  defecto, seguía tapando el resto. Con tope propio el panel bajó a 914 px.
+- **Sólo Género se abre por defecto**, y además lleva `scroll:true`: plegar no bastaba
+  porque abierto seguía tapando el resto. Con tope propio y los demás grupos plegados
+  el panel pasó de 1.926 px a 794.
 - **En el móvil es hoja inferior**, no cajón lateral: entra desde abajo
   (`translateY`), hasta `88vh`, con tirador y el botón «Ver N títulos» al alcance del
   pulgar. Y `overscroll-behavior:contain` en `.body` y en `.scrolly`, que si no el
