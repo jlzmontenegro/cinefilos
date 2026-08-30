@@ -278,6 +278,30 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
   `ultimaSync`).
 - **Novedades**: se calculan comparando con `cm.seen`, así cada visitante ve las suyas.
 
+### El panel de filtros
+
+Nueve grupos: Género (38 opciones), Década (12), País (75), Años, Valoración, Director
+(1.046), Tipo, Idioma y Otros. Con todos desplegados a la vez el panel medía **1.926 px
+de alto contra 555 visibles** —tres pantallas y media— y sólo los géneros llenaban lo
+que se veía: para llegar a «Década» había que pasar 38 géneros y 75 países.
+
+Ahora cada grupo es un `<details class="fgroup">`. Lo que hay que respetar si se toca:
+
+- **La cabecera plegada dice qué llevas puesto** (`resumenGrupo()` → `[data-resumen]`).
+  Sin eso, plegar esconde los filtros activos y no hay forma de saber qué está
+  recortando el catálogo sin abrirlos uno a uno. `actualizarContadoresGrupo()` se llama
+  desde `App.aplicar()`, así que el resumen se refresca solo.
+- **`construirFiltros()` se llama muchas veces** (al quitar un chip, al entrar por un
+  enlace de género…). Cierra el panel entero si no se recuerda qué estaba abierto: por
+  eso `grupo()` consulta el DOM viejo, que todavía está en pie mientras se arma la
+  plantilla. Y un grupo con filtros puestos se abre solo.
+- **Género también lleva `scroll:true`.** Sólo con plegar no bastaba: abierto por
+  defecto, seguía tapando el resto. Con tope propio el panel bajó a 914 px.
+- **En el móvil es hoja inferior**, no cajón lateral: entra desde abajo
+  (`translateY`), hasta `88vh`, con tirador y el botón «Ver N títulos» al alcance del
+  pulgar. Y `overscroll-behavior:contain` en `.body` y en `.scrolly`, que si no el
+  gesto sigue arrastrando la página de detrás al llegar al final de la lista.
+
 ### Probar otra interfaz sin arriesgar la buena
 
 Si existe `scraper/template-nuevo.html`, `build.mjs` genera además `nuevo.html` y el
@@ -327,6 +351,15 @@ sólo aparecieron al medirlos en pantalla.
 - **`aspect-ratio` no gana al ancho nativo de una imagen.** Con `width:auto`, el cartel
   del héroe tomaba los 209 px del archivo y `object-fit:cover` recortaba los lados. El
   ancho se calcula desde la altura.
+- **`<summary>` es `display:list-item`, no un bloque cualquiera.** Para maquetarlo como
+  fila hay que ponerle `display:flex` **y** `list-style:none` (Firefox) **y**
+  `::-webkit-details-marker{display:none}` (Safari); con uno solo queda el triangulito.
+- **Dos hermanos con `margin-left:auto` se reparten el hueco.** En la cabecera del
+  grupo, el resumen y el galón lo llevaban los dos y el galón quedaba a media fila. El
+  `auto` va sólo en el primero; el segundo, margen fijo.
+- **Al comprobar en el navegador, un clic por llamada.** Encadenar clics en un
+  `browser_batch` justo después de abrir el panel los perdía: la animación de entrada
+  dura .46 s y los primeros caían en el vacío. Parecía un fallo del código y no lo era.
 - **Dentro de `preserve-3d` manda la profundidad, no el `z-index`.** Las láminas del
   vitral están giradas, así que sus planos cruzaban por delante de la principal y,
   siendo translúcidas, la velaban: parecía que la de delante tenía transparencia
