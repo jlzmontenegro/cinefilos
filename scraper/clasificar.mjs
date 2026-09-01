@@ -209,6 +209,20 @@ export function crearClasificador() {
      que no se sepa, o null entero si no se sabe nada. Va como lista y no como
      objeto porque el HTML guarda los datos por columnas y así ocupa cuatro
      números en vez de cuatro nombres de campo repetidos 400 veces. */
+  /* Algunos vídeos lo dicen con todas las letras: «Patria T 1 (2020) SERIE
+     COMPLETA». Es la palabra de quien la subió, tan literal como el rango de
+     episodios, y sin leerla tres series completas se contaban como si no lo
+     estuvieran. Se busca «complet», no «compl», para no enganchar títulos como
+     «Stand Alone Complex». El NFKC es por los nombres con letras decorativas. */
+  function declaraCompleta(videoName) {
+    if (!videoName) return null;
+    const v = fold(String(videoName).normalize('NFKC'));
+    if (!/complet[ao]/.test(v)) return null;
+    const t = /(?:^|[\s\-_.])t\s?(\d{1,2})(?=[\s\-_.(]|$)/.exec(v)
+      || /temporada\s*(\d{1,2})/.exec(v);
+    return { temporada: t ? +t[1] : null };
+  }
+
   const TIPOS_SERIE = ['Serie', 'Miniserie', 'Serie documental'];
   function tramoSerie(r, sinopsis, tipoObra) {
     /* Sólo para series. En una película «partes» habla de otra cosa y colaba 77
@@ -221,8 +235,15 @@ export function crearClasificador() {
        episodios: «Cien años de soledad» se estrenó en 2 partes y el vídeo trae
        e1-4. Antes que enseñar «E1-4 de 2» se prefiere no decir el total. */
     if (total != null && t && t.hasta != null && t.hasta > total) total = null;
-    if (!t && total == null) return null;
-    return [t ? t.temporada : null, t ? t.desde : null, t ? t.hasta : null, total];
+    const dicha = declaraCompleta(r && r.videoName);
+    if (!t && total == null && !dicha) return null;
+    return [
+      (t && t.temporada != null) ? t.temporada : (dicha ? dicha.temporada : null),
+      t ? t.desde : null,
+      t ? t.hasta : null,
+      total,
+      dicha ? 1 : null,   // lo dice el propio vídeo
+    ];
   }
 
   // ---------- tipo de obra ----------

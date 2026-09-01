@@ -307,6 +307,17 @@ Tres cosas que costaron y conviene no deshacer:
   callarse.
 - **Nunca se afirma «incompleta» sin las dos cifras.** Sin total sólo se enseña el
   tramo, que ya habla solo: «E1 de 3» se entiende sin adjetivos.
+- **«Completa» exige empezar por el primero, no sólo llegar al último.** La primera
+  versión miraba `hasta >= total` y daba por completas «El régimen» (E4-6 **de 6**) y
+  «Luminosas» (E5-8 **de 8**), que alcanzan el final saltándose la mitad. Tiene que
+  ser `desde === 1 && hasta >= total`.
+- **Hay vídeos que lo dicen con todas las letras**: «Patria T 1 (2020) SERIE
+  COMPLETA». Es la palabra de quien la subió, tan literal como el rango, y sin leerla
+  se perdían tres. Va en el quinto hueco de `tramo`. Se busca `complet`, no `compl`,
+  para no enganchar títulos como «Stand Alone Complex».
+
+Contadas bien son **9**, no las 8 de la primera versión: −2 falsas completas, +3 que
+lo declaran. Ocho de las nueve se corroboran además con el minutaje por episodio.
 - Dentro de Series el chip «Serie» se ocultaba por redundante
   (`body.en-series … .chip.serie{display:none}`). Ahora lleva el tramo, que ahí es
   justo lo que interesa: la regla exige `:not(.eps)`.

@@ -1173,14 +1173,20 @@ window.posterCaido = posterCaido;
    para las demás. */
 function tramoTexto(m) {
   if (!m.tramo) return null;
-  const [temp, desde, hasta, total] = m.tramo;
+  const [temp, desde, hasta, total, dicha] = m.tramo;
   const partes = [];
   if (temp != null) partes.push('T' + temp);
   if (desde != null) partes.push(desde === hasta ? 'E' + desde : `E${desde}-${hasta}`);
-  if (!partes.length) return total != null ? { txt: `${total} episodios`, estado: null } : null;
+  else if (total != null) partes.push(`${total} episodios`);
+  if (!partes.length) return dicha ? { txt: 'Completa', estado: 'completa' } : null;
   let txt = partes.join(' · ');
-  if (total != null) txt += ` de ${total}`;
-  const estado = (hasta == null || total == null) ? null : (hasta >= total ? 'completa' : 'parcial');
+  if (total != null && desde != null) txt += ` de ${total}`;
+  /* Completa exige empezar por el primero, no sólo llegar al último. «El régimen»
+     trae E4-6 de 6 y «Luminosas» E5-8 de 8: las dos alcanzan el final saltándose
+     la mitad, y se estaban dando por completas. */
+  const estado = dicha ? 'completa'
+    : (desde == null || hasta == null || total == null) ? null
+      : (desde === 1 && hasta >= total) ? 'completa' : 'parcial';
   return { txt, estado };
 }
 
