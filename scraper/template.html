@@ -252,6 +252,13 @@ main{padding:0 0 90px}
 .row-head .more{margin-left:auto;font-size:12.5px;color:var(--accent);cursor:pointer;font-weight:600;
   opacity:0;transition:opacity .25s}
 .row:hover .row-head .more{opacity:1}
+/* Sin ratón no hay hover: en el móvil «Ver todas» y «Vaciar» se quedaban a
+   opacidad 0 pero seguían ocupando su sitio y siendo pulsables. Es decir, un
+   enlace invisible que se toca sin querer al arrastrar la fila — y uno de ellos
+   borra la lista. Ahí se ven siempre, y con área de toque razonable. */
+@media (hover:none){
+  .row-head .more{opacity:1;padding:9px 4px;margin-block:-9px}
+}
 .rail-wrap{position:relative}
 /* El scroll-padding es imprescindible, no decorativo: sin él, el imán del
    scroll-snap alinea la primera carátula con el borde del contenedor y se come
@@ -263,8 +270,12 @@ main{padding:0 0 90px}
 .rail::-webkit-scrollbar{display:none}
 .rail .card{scroll-snap-align:start}
 /* La fila reserva su altura mientras está vacía, que si no el contenido de abajo
-   sube y baja según se van pintando y el scroll da saltos. */
-.rail:empty{min-height:calc(var(--cw,168px) * 1.5)}
+   sube y baja según se van pintando y el scroll da saltos.
+   Los 36px son el relleno propio del carril (14 arriba + 22 abajo): con
+   `box-sizing:border-box` el min-height los incluye, así que sin sumarlos la fila
+   vacía se quedaba 36px corta y el salto se acumulaba fila a fila — más de mil
+   píxeles al llegar abajo en el móvil. */
+.rail:empty{min-height:calc(var(--cw,168px) * 1.5 + 36px)}
 .rail-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:42px;height:42px;
   border-radius:50%;border:1px solid var(--stroke);background:var(--glass);color:var(--txt);
   -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);cursor:pointer;display:grid;place-items:center;
@@ -1012,10 +1023,23 @@ function apuntarVisto(id) {
   LS.set('viendo', VIENDO);
   refrescarPortada();
 }
+/* Vaciar es destructivo y su botón es pequeño: en el móvil se toca sin querer al
+   intentar desplazar la fila. En vez de un diálogo de confirmación —que estorba
+   cuando sí querías vaciar— se ofrece deshacer, que es la máquina que ya tiene la
+   página para esto. */
 function olvidarVistos() {
+  const copia = VIENDO.slice();
   VIENDO.length = 0;
   LS.set('viendo', VIENDO);
   refrescarPortada();
+  aviso('Se ha vaciado «Seguir viendo».', 7000, {
+    txt: 'Deshacer',
+    fn() {
+      VIENDO.push(...copia);
+      LS.set('viendo', VIENDO);
+      refrescarPortada();
+    },
+  });
 }
 /* Se rehacen las filas, no `App.aplicar()` entero: si el usuario estaba en una
    rejilla filtrada, aplicar() la repinta desde arriba y pierde el sitio donde

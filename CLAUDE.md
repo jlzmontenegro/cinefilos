@@ -394,6 +394,12 @@ Ojo con dos cosas: `filaPendiente.clear()` va al **principio** de `construirFila
 necesita `min-height`, que si no el contenido de abajo sube y baja según se pinta y
 el scroll da saltos.
 
+Y ese `min-height` tiene que **sumar el relleno del carril** (14 arriba + 22 abajo).
+Con `box-sizing:border-box` el `min-height` los incluye, así que `calc(--cw * 1.5)`
+a secas dejaba la fila vacía 36 px corta: en el móvil, 28 filas sin pintar eran más
+de **mil píxeles** de salto acumulado al bajar. Con los 36 px sumados, la fila vacía
+y la llena miden lo mismo y el alto de la página no cambia al pintarse.
+
 ### El panel de filtros
 
 Nueve grupos: Género (35 opciones), Década (12), País (75), Años, Valoración, Director
@@ -483,6 +489,11 @@ sólo aparecieron al medirlos en pantalla.
 - **Al comprobar en el navegador, un clic por llamada.** Encadenar clics en un
   `browser_batch` justo después de abrir el panel los perdía: la animación de entrada
   dura .46 s y los primeros caían en el vacío. Parecía un fallo del código y no lo era.
+- **`opacity:0` no quita el elemento: sigue ocupando sitio y sigue siendo pulsable.**
+  `.row-head .more` («Ver todas», «Vaciar») sólo aparecía con `:hover`, y en el móvil
+  no hay hover: eran enlaces invisibles que se tocaban sin querer al arrastrar la
+  fila, y uno de ellos borraba la lista. Se arregla con `@media (hover:none)`, que ya
+  se usa para los botones de flecha del carril.
 - **Dentro de `preserve-3d` manda la profundidad, no el `z-index`.** Las láminas del
   vitral están giradas, así que sus planos cruzaban por delante de la principal y,
   siendo translúcidas, la velaban: parecía que la de delante tenía transparencia
