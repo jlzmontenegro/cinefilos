@@ -175,6 +175,34 @@ limpia) y `_site/Cinefilos.html` ← la redirección, para no romper enlaces ant
 Comprueba siempre el resultado con una petición real: la caché del navegador engaña
 mucho, y GitHub Pages sirve con `max-age=600`.
 
+### El correo de los viernes
+
+`resumen.mjs` maqueta con **tablas y estilos en línea**, que es lo único que respetan
+todos los clientes. Nada de flexbox, grid ni hojas aparte. Cómo está montado:
+
+- **Una destacada arriba** (la mejor valorada con carátula y sinopsis), con ficha
+  grande y el **cartel a la derecha**; las filas de abajo lo llevan a la izquierda, y
+  ese contraste es lo que hace que la de arriba se lea como destacada. Antes eran
+  diez filas idénticas y la vista resbalaba.
+- **Películas y series en bloques separados**, como el catálogo, y en las series la
+  etiqueta dice **qué trae** («Miniserie · E1-4 de 8»). En un correo de novedades ese
+  dato importa más que en ningún sitio: es donde se decide si entras.
+- **Bloque «Y también»** con hasta 25 títulos más, sólo como enlaces. Así el correo
+  cuenta la semana entera sin convertirse en un catálogo.
+- **El `alt` de cada carátula lleva el título.** Muchos clientes bloquean las imágenes
+  por defecto y sin eso quedaban diez rectángulos vacíos.
+
+Dos límites que hay que respetar: **Gmail recorta a partir de 102 KB** (el script
+avisa; ahora va por 31) y el ancho útil son 600 px, comprobado también a 360.
+
+Para verlo sin esperar al viernes:
+
+```bash
+cd scraper && DIAS=10 node resumen.mjs   # escribe correo.eml y resumen.md
+```
+
+y se saca el HTML del `.eml` decodificando el base64 que va tras la cabecera.
+
 ### Avisos (el enganche para n8n)
 
 Si defines el secreto **`WEBHOOK_NOVEDADES`** en el repositorio, cada vez que entren
@@ -305,6 +333,12 @@ recorte. Lo que decide entre portada y rejilla es el resto de filtros.
 El botón de la barra enseña **a dónde te lleva, no dónde estás**: en Películas dice
 «Series» con el televisor, y dentro de Series dice «Películas» con la claqueta. Los
 dos iconos van en el HTML y el CSS enseña uno u otro según `.on`.
+
+La claqueta se rehízo: la primera versión era un rectángulo con dos rayas verticales
+y una horizontal —una rejilla de fotogramas— y **a 17 px se leía como una ventana o
+una tabla**. Lo que la hace reconocible es la barra superior inclinada con sus dos
+rayas. Lección para los demás iconos de la barra: se juzgan **a 17 px con trazo de
+1,7**, no ampliados; lo que ahí no se distingue de un rectángulo, no sirve.
 
 `construirFilas(base)` y `construirHero(base)` reciben la mitad sobre la que trabajar.
 Los umbrales de las filas bajan cuando la base es pequeña: con los del catálogo entero

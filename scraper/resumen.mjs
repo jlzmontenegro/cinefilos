@@ -26,8 +26,33 @@ const nuevas = movies
   .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 
 // Las que no tienen nota van al final: «sin nota» no es lo mismo que «mala».
-const mostradas = [...nuevas].sort((a, b) => (b.imdb || -1) - (a.imdb || -1)).slice(0, TOPE);
+const porNota = [...nuevas].sort((a, b) => (b.imdb || -1) - (a.imdb || -1));
+const mostradas = porNota.slice(0, TOPE);
 const restantes = nuevas.length - mostradas.length;
+
+/* La mejor valorada de la semana encabeza el correo con ficha grande. Diez filas
+   idénticas se leen como una lista de la compra: sin nada que destaque, la vista
+   resbala. Necesita carátula y sinopsis para llenar la ficha; si la mejor no las
+   tiene, se busca la siguiente que sí. */
+const destacada = mostradas.find((m) => m.poster && m.sinopsis) || null;
+const resto = mostradas.filter((m) => m !== destacada);
+
+const esSerie = (m) => /serie/i.test(m.tipo || '');
+const pelisNuevas = resto.filter((m) => !esSerie(m));
+const seriesNuevas = resto.filter(esSerie);
+
+/* El mismo dato que enseña la ficha del catálogo: qué trae la publicación.
+   En un correo de novedades importa más que en ningún sitio, porque es donde se
+   decide si merece la pena entrar. */
+function tramoTexto(m) {
+  if (!m.tramo) return null;
+  const [temp, desde, hasta, total] = m.tramo;
+  const partes = [];
+  if (temp != null) partes.push('T' + temp);
+  if (desde != null) partes.push(desde === hasta ? 'E' + desde : `E${desde}-${hasta}`);
+  if (!partes.length) return total != null ? `${total} episodios` : null;
+  return partes.join(' · ') + (total != null ? ` de ${total}` : '');
+}
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -74,13 +99,63 @@ fs.writeFileSync('resumen.md', md);
 /* ---------- Correo ----------
    Maquetado con tablas y estilos en línea: es lo único que respetan todos los
    clientes de correo. Nada de flexbox, grid ni hojas de estilo aparte. */
+/* Etiquetas. Van con `display:inline-block` y bordes redondeados: Outlook de
+   escritorio los pinta cuadrados, que es una degradación aceptable. */
+const etiqueta = (txt, { color = '#9aa0ae', fondo = '#171b26', borde = '#262b38' } = {}) =>
+  `<span style="display:inline-block;background:${fondo};border:1px solid ${borde};
+     color:${color};font-size:11px;font-weight:650;padding:3px 8px;border-radius:20px;
+     white-space:nowrap;margin:0 5px 5px 0">${esc(txt)}</span>`;
+
+const etiquetaNota = (m) => m.imdb
+  ? etiqueta(`★ ${m.imdb.toFixed(1)}`, { color: '#ffc400', fondo: '#241f06', borde: '#3d3413' })
+  : '';
+
+/* Las etiquetas de una ficha, en el orden en que se leen: cuánto vale, de qué va,
+   y —si es serie— qué trae, que es lo que decide si entras o no. */
+const etiquetas = (m) => {
+  const t = tramoTexto(m);
+  return etiquetaNota(m)
+    + (m.generos || []).slice(0, 1).map((g) => etiqueta(g)).join('')
+    + (esSerie(m)
+      ? etiqueta(t ? `${m.tipo} · ${t}` : m.tipo, { color: '#bcd9ff', fondo: '#141b28', borde: '#28405e' })
+      : '');
+};
+
+/* La ficha grande de la mejor de la semana. */
+const fichaDestacada = (m) => {
+  const url = enlace(m);
+  const meta = [m.anio, (m.directores || [])[0]].filter(Boolean).join(' · ');
+  /* El cartel va a la derecha, al revés que en las filas de abajo. Además de
+     romper la monotonía, deja el texto pegado al margen izquierdo, que es por
+     donde se empieza a leer. */
+  return `
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+         style="background:#12151f;border:1px solid #2d3242;border-radius:16px">
+    <tr>
+      <td valign="top" style="padding:16px 12px 16px 16px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.13em;
+             text-transform:uppercase;color:#ffc400;margin-bottom:6px">La mejor de la semana</div>
+        <a href="${esc(url)}" style="color:#f2f3f7;text-decoration:none;font-weight:800;
+           font-size:19px;line-height:1.2;letter-spacing:-.02em">${esc(titulo(m))}</a>
+        <div style="color:#8e8e99;font-size:12.5px;margin:6px 0 8px">${esc(meta)}</div>
+        <div>${etiquetas(m)}</div>
+        <div style="color:#7c7c88;font-size:12.5px;line-height:1.55;margin-top:4px">
+          ${esc(recortar(m.sinopsis, 230))}</div>
+      </td>
+      <td width="126" valign="top" style="padding:16px 16px 16px 0">
+        <a href="${esc(url)}" style="text-decoration:none">
+          <img src="${esc(m.poster)}" width="110" height="165" alt="${esc(titulo(m))}"
+               style="display:block;width:110px;height:165px;border-radius:10px;
+                      background:#1b1f2b;border:0;outline:none;text-decoration:none">
+        </a>
+      </td>
+    </tr>
+  </table>`;
+};
+
 const filaPeli = (m) => {
   const meta = [m.anio, (m.directores || [])[0]].filter(Boolean).join(' · ');
   const url = enlace(m);
-  const nota = m.imdb
-    ? `<span style="display:inline-block;background:#241f06;color:#ffc400;font-size:11px;
-         font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap">★ ${m.imdb.toFixed(1)}</span>`
-    : '';
   return `
   <tr><td style="padding:0 0 8px">
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
@@ -88,7 +163,9 @@ const filaPeli = (m) => {
       <tr>
         <td width="76" valign="top" style="padding:12px 0 12px 12px">
           <a href="${esc(url)}" style="text-decoration:none">
-            <img src="${esc(m.poster || '')}" width="64" height="96" alt=""
+            <!-- El alt lleva el título: muchos clientes bloquean las imágenes por
+                 defecto y sin esto quedaban diez rectángulos vacíos. -->
+            <img src="${esc(m.poster || '')}" width="64" height="96" alt="${esc(titulo(m))}"
                  style="display:block;width:64px;height:96px;border-radius:8px;
                         background:#1b1f2b;border:0;outline:none;text-decoration:none">
           </a>
@@ -96,17 +173,39 @@ const filaPeli = (m) => {
         <td valign="top" style="padding:12px 14px 12px 10px">
           <a href="${esc(url)}" style="color:#f2f3f7;text-decoration:none;font-weight:700;
              font-size:15px;line-height:1.25">${esc(titulo(m))}</a>
-          <div style="margin:5px 0 0">
-            <span style="color:#8e8e99;font-size:12.5px">${esc(meta)}</span>
-            ${nota ? ' &nbsp;' + nota : ''}
-          </div>
-          ${m.sinopsis ? `<div style="color:#7c7c88;font-size:12.5px;line-height:1.5;margin-top:7px">
-             ${esc(recortar(m.sinopsis, 165))}</div>` : ''}
+          <div style="color:#8e8e99;font-size:12.5px;margin:5px 0 7px">${esc(meta)}</div>
+          <div>${etiquetas(m)}</div>
+          ${m.sinopsis ? `<div style="color:#7c7c88;font-size:12.5px;line-height:1.5;margin-top:2px">
+             ${esc(recortar(m.sinopsis, 150))}</div>` : ''}
         </td>
       </tr>
     </table>
   </td></tr>`;
 };
+
+/* Encabezado de bloque, para separar películas de series como hace el catálogo. */
+const rotulo = (txt, n) => `
+  <tr><td style="padding:14px 12px 10px">
+    <span style="font-size:11.5px;font-weight:700;letter-spacing:.1em;
+          text-transform:uppercase;color:#6f6f7b">${esc(txt)}</span>
+    <span style="font-size:11.5px;color:#4e4e59;margin-left:7px">${n}</span>
+  </td></tr>`;
+
+/* El resto, sólo como enlaces. Así el correo cuenta la semana entera sin
+   convertirse en un catálogo: cada línea ocupa una fracción de una ficha. */
+const TOPE_LISTA = 25;
+const enLista = porNota.slice(TOPE, TOPE + TOPE_LISTA);
+const sinListar = nuevas.length - TOPE - enLista.length;
+const listaCompacta = enLista.map((m) => {
+  const t = esSerie(m) ? tramoTexto(m) : null;
+  return `<div style="padding:5px 0;border-bottom:1px solid #191c25">
+    <a href="${esc(enlace(m))}" style="color:#d7d9e0;text-decoration:none;font-size:13px;
+       font-weight:600">${esc(titulo(m))}</a>
+    <span style="color:#6f6f7b;font-size:12px">${esc([
+      m.anio, m.imdb ? `★ ${m.imdb.toFixed(1)}` : null, t,
+    ].filter(Boolean).join(' · '))}</span>
+  </div>`;
+}).join('');
 
 const cuerpo = `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
@@ -150,18 +249,28 @@ const cuerpo = `<!doctype html>
           Pero el catálogo sigue ahí, con ${movies.length.toLocaleString('es')} películas.</div>`}
     </td></tr>
 
-    ${mostradas.length ? `
-    <tr><td style="background:#0d1018;padding:20px 24px 2px;border-left:1px solid #23262f;border-right:1px solid #23262f">
-      <div style="font-size:11.5px;font-weight:700;letter-spacing:.1em;
-                  text-transform:uppercase;color:#6f6f7b">
-        ${nuevas.length > TOPE ? 'Las mejor valoradas' : 'Lo que ha entrado'}</div>
-    </td></tr>
-    <tr><td style="background:#0d1018;padding:12px 12px 4px;border-left:1px solid #23262f;border-right:1px solid #23262f">
+    ${destacada ? `
+    <tr><td style="background:#0d1018;padding:18px 16px 4px;border-left:1px solid #23262f;border-right:1px solid #23262f">
+      ${fichaDestacada(destacada)}
+    </td></tr>` : ''}
+
+    ${resto.length ? `
+    <tr><td style="background:#0d1018;padding:4px 12px 4px;border-left:1px solid #23262f;border-right:1px solid #23262f">
       <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-        ${mostradas.map(filaPeli).join('')}
+        ${pelisNuevas.length ? rotulo(seriesNuevas.length ? 'Películas' : 'También ha entrado', pelisNuevas.length) : ''}
+        ${pelisNuevas.map(filaPeli).join('')}
+        ${seriesNuevas.length ? rotulo('Series', seriesNuevas.length) : ''}
+        ${seriesNuevas.map(filaPeli).join('')}
       </table>
-      ${restantes > 0 ? `<div style="text-align:center;font-size:13px;color:#8e8e99;padding:12px 0 2px">
-        y <a href="${SITIO}" style="color:#ffc400;font-weight:650;text-decoration:none">${restantes} título${restantes === 1 ? '' : 's'} más</a>
+    </td></tr>` : ''}
+
+    ${enLista.length ? `
+    <tr><td style="background:#0d1018;padding:10px 24px 4px;border-left:1px solid #23262f;border-right:1px solid #23262f">
+      <div style="font-size:11.5px;font-weight:700;letter-spacing:.1em;
+                  text-transform:uppercase;color:#6f6f7b;padding-bottom:4px">Y también</div>
+      ${listaCompacta}
+      ${sinListar > 0 ? `<div style="font-size:12.5px;color:#6f6f7b;padding:10px 0 0">
+        y <a href="${SITIO}" style="color:#ffc400;font-weight:650;text-decoration:none">${sinListar} más</a>
         en el catálogo</div>` : ''}
     </td></tr>` : ''}
 
