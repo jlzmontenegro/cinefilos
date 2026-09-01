@@ -343,8 +343,8 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
   de la lista `VACIAS` sólo cuentan en título/dirección; si se buscaran en la sinopsis,
   «pelicula que no existe» devolvía 121 resultados. Al buscar manda la relevancia,
   salvo que se elija un orden concreto en el desplegable.
-- **Persistencia**: `localStorage` con prefijo `cm.` (`favs`, `seen`, `delta`,
-  `ultimaSync`).
+- **Persistencia**: `localStorage` con prefijo `cm.` (`favs`, `seen`, `viendo`,
+  `citas`).
 - **Novedades**: se calculan comparando con `cm.seen`, así cada visitante ve las suyas.
 - **Seguir viendo** (`cm.viendo`): los últimos 20 títulos que se han puesto a
   reproducir, lo más reciente primero, y su fila va la primera bajo el héroe.
@@ -358,15 +358,20 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
 
 ### La cita del pie
 
-Donde había una frase fija hay ahora una cita sorteada de `CITAS`, 19 en total y de
-dos clases: réplicas de película —atribuidas al título y su año, en cursiva— y frases
-de cineastas sobre el oficio, atribuidas a la persona. El tercer elemento de cada
-entrada (`peli`) es lo que las distingue.
+Donde había una frase fija hay ahora una cita sorteada de `CITAS`, **34** en total y
+de dos clases: 20 réplicas de película —atribuidas al título y su año, en cursiva— y
+14 frases de cineastas sobre el oficio, atribuidas a la persona. El tercer elemento
+de cada entrada (`peli`) es lo que las distingue.
 
-Se sortea en cada carga, como el héroe, y al pinchar sale otra; nunca repite la que
-estaba, que pinchar y que no cambie nada parece que falla. **Sin temporizador a
+Se sortea en cada carga, como el héroe, y al pinchar sale otra. **Sin temporizador a
 propósito**: una frase que se mueve sola mientras la lees es exactamente lo que se
 quitó de la franja de cifras.
+
+Con el sorteo a secas, una de cada 34 visitas repetía la anterior y el pie parecía
+muerto. `cm.citas` guarda las **12 últimas** y se sortea entre las que no están, así
+que hacen falta doce visitas seguidas antes de que pueda repetirse ninguna. Si algún
+día quedan menos de 12 citas, la memoria las tacharía todas: por eso el respaldo de
+`libres` vacío, que se conforma con no repetir la que está puesta.
 
 Si se añaden más: cortas y **bien atribuidas**. Cuidado con las que "todo el mundo
 sabe" y son falsas — en *Casablanca* nadie dice «tócala otra vez, Sam», y en *El

@@ -69,6 +69,8 @@ catálogo, y por eso no se comparte entre tu móvil y tu ordenador.
   deja consultar el punto de reproducción.
 - **Mi lista** — lo que marques con el corazón.
 - **Novedades** — lo que ha entrado desde tu última visita.
+- **La cita del pie** — cambia en cada visita, y recuerda las doce últimas para no
+  repetirte ninguna. Si te apetece otra, pincha en ella.
 
 ## Series: qué trae cada publicación
 

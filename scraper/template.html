@@ -1338,14 +1338,42 @@ const CITAS = [
   ['El cine es una cuestión de qué hay dentro del encuadre y qué se queda fuera.', 'Martin Scorsese', false],
   ['Las películas son más armoniosas que la vida.', 'François Truffaut', false],
   ['Si tienes un problema en el tercer acto, el problema de verdad está en el primero.', 'Billy Wilder', false],
+  ['Hasta la vista, baby.', 'Terminator 2: el juicio final (1991)', true],
+  ['Vas a necesitar un barco más grande.', 'Tiburón (1975)', true],
+  ['Me encanta el olor a napalm por la mañana.', 'Apocalypse Now (1979)', true],
+  ['Francamente, querida, me importa un bledo.', 'Lo que el viento se llevó (1939)', true],
+  ['Toto, presiento que ya no estamos en Kansas.', 'El mago de Oz (1939)', true],
+  ['La primera regla del club de la lucha es: nadie habla del club de la lucha.', 'El club de la lucha (1999)', true],
+  ['¡Soy el rey del mundo!', 'Titanic (1997)', true],
+  ['Bond. James Bond.', 'Agente 007 contra el Dr. No (1962)', true],
+  ['¿Estás hablando conmigo?', 'Taxi Driver (1976)', true],
+  ['Un gran poder conlleva una gran responsabilidad.', 'Spider-Man (2002)', true],
+  ['La vida es una tragedia en primer plano, pero una comedia en plano general.', 'Charles Chaplin', false],
+  ['Para hacer una gran película hacen falta tres cosas: el guion, el guion y el guion.', 'Alfred Hitchcock', false],
+  ['No hay final. No hay principio. Sólo la infinita pasión por la vida.', 'Federico Fellini', false],
+  ['Sueño para vivir.', 'Steven Spielberg', false],
+  ['Todo lo que necesitas para hacer una película es una chica y una pistola.', 'Jean-Luc Godard', false],
 ];
+
+/* Con el sorteo a secas, una de cada 34 visitas repetía la cita anterior y parecía
+   que el pie estaba muerto. Se guardan las últimas vistas en `cm.citas` y se sortea
+   entre las que no están, así cambia de verdad en cada sesión: hacen falta doce
+   visitas seguidas antes de que pueda repetirse ninguna. */
+const CITAS_VISTAS = LS.get('citas', []).filter(i => i >= 0 && i < CITAS.length);
+const MEMORIA_CITAS = 12;
 let citaI = -1;
+
 function pintarCita() {
-  // Nunca repite la que ya estaba: pinchar y que no cambie nada parece que falla
-  let i = citaI;
-  while (CITAS.length > 1 && i === citaI) i = Math.floor(Math.random() * CITAS.length);
-  citaI = i;
-  const [texto, autor, peli] = CITAS[i];
+  let libres = CITAS.map((_, i) => i).filter(i => i !== citaI && !CITAS_VISTAS.includes(i));
+  // Si la memoria las ha tachado todas, basta con no repetir la que está puesta
+  if (!libres.length) libres = CITAS.map((_, i) => i).filter(i => i !== citaI);
+  citaI = libres[Math.floor(Math.random() * libres.length)];
+
+  CITAS_VISTAS.push(citaI);
+  while (CITAS_VISTAS.length > MEMORIA_CITAS) CITAS_VISTAS.shift();
+  LS.set('citas', CITAS_VISTAS);
+
+  const [texto, autor, peli] = CITAS[citaI];
   $('#cita').innerHTML = `<p${peli ? ' class="repl"' : ''}>${esc(texto)}</p>
     <cite>${esc(autor)}</cite>`;
 }
