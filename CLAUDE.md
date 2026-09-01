@@ -249,6 +249,40 @@ Consecuencias medidas, por si extrañan:
   descritos como «thriller de terror». El buscador sí los encuentra, porque el
   índice `_s` incluye la sinopsis entera.
 
+### Qué trae la serie: `tramo`
+
+Para saber si una serie está completa **no hace falta Internet, y de hecho Internet
+no lo resolvería**. El dato difícil no es cuántos episodios tiene la obra: es qué
+contiene el vídeo que se subió. Un vídeo de tres horas puede ser cuatro episodios o
+un montaje, y eso no se deduce de la duración.
+
+Lo dice el propio origen. ok.ru guarda en `videoName` el tramo subido:
+
+```
+2026 Lucky e1-4          2019 Undone s1 e1-8      Unbelievable S01E01
+53v3r.s01e01.m720p.Vose  th3-4ct-s1-e1-8-2019     2026 Abandonados e1
+```
+
+`tramoVideo()` lo lee (268 de 405 series) y `episodiosTotales()` saca de la sinopsis
+cuántos tiene la obra entera —«constó de siete episodios», «una serie de tres
+partes»— (264 de 405). Juntos dan el campo **`tramo` = `[temporada, desde, hasta,
+total]`**, con `null` en lo que no se sepa. 341 series llevan algo; de **188** se
+puede afirmar si están completas, y **180 no lo están**.
+
+Tres cosas que costaron y conviene no deshacer:
+
+- **Sólo se calcula para series.** En una película «partes» habla de otra cosa y
+  colaba 77 fichas: «narra tres historias sobre parejas de diferentes **partes** de
+  Italia», «la segunda entrega de la serie de películas de dos **partes**».
+- **Si `hasta > total`, el total no vale y se tira.** «Cien años de soledad» se
+  estrenó en 2 partes y el vídeo trae `e1-4`: enseñar «E1-4 de 2» era peor que
+  callarse.
+- **Nunca se afirma «incompleta» sin las dos cifras.** Sin total sólo se enseña el
+  tramo, que ya habla solo: «E1 de 3» se entiende sin adjetivos.
+- Dentro de Series el chip «Serie» se ocultaba por redundante
+  (`body.en-series … .chip.serie{display:none}`). Ahora lleva el tramo, que ahí es
+  justo lo que interesa: la regla exige `:not(.eps)`.
+
 ### Erratas del origen: `correcciones.json`
 
 Cuando la publicación de ok.ru viene mal escrita no hay parseo que la salve — el post
@@ -267,6 +301,10 @@ los filtros trabajan sólo dentro de la mitad en la que estés (`baseActual()`).
 
 `soloSeries` **no cuenta como filtro** en `hayFiltros()`: es una sección, no un
 recorte. Lo que decide entre portada y rejilla es el resto de filtros.
+
+El botón de la barra enseña **a dónde te lleva, no dónde estás**: en Películas dice
+«Series» con el televisor, y dentro de Series dice «Películas» con la claqueta. Los
+dos iconos van en el HTML y el CSS enseña uno u otro según `.on`.
 
 `construirFilas(base)` y `construirHero(base)` reciben la mitad sobre la que trabajar.
 Los umbrales de las filas bajan cuando la base es pequeña: con los del catálogo entero
@@ -308,6 +346,31 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
 - **Persistencia**: `localStorage` con prefijo `cm.` (`favs`, `seen`, `delta`,
   `ultimaSync`).
 - **Novedades**: se calculan comparando con `cm.seen`, así cada visitante ve las suyas.
+- **Seguir viendo** (`cm.viendo`): los últimos 20 títulos que se han puesto a
+  reproducir, lo más reciente primero, y su fila va la primera bajo el héroe.
+  **No es progreso de reproducción**: el reproductor de ok.ru va en un iframe de otro
+  dominio y no deja preguntarle por dónde va, así que no hay minuto guardado ni barra.
+  Es «lo que abriste». Se apunta en los tres sitios donde se empieza a ver: el botón
+  Reproducir, el autoplay del héroe y el enlace de fuente alternativa.
+  Cambiarlo rehace **sólo las filas**, no `App.aplicar()` entero: aplicar() repinta la
+  rejilla desde arriba y el usuario pierde el sitio donde iba. Y no rehace el héroe,
+  que resortearía las seis destacadas cada vez que le das a reproducir.
+
+### La portada se pinta a medida que se baja
+
+Las carátulas de cada fila **no** se construyen al armar la portada: se guardan en
+`filaPendiente` y se pintan cuando la fila se acerca (`railObs`, con 700 px de
+margen). Las dos primeras se pintan a mano, que esperar al observador deja un
+parpadeo.
+
+Medido: 31 filas × 32 carátulas eran **980 tarjetas y 13.721 nodos** de golpe, y
+sólo se veían dos filas. Ahora arranca con **52 tarjetas y 3.477 nodos**, y el
+`domInteractive` baja de **1.649 ms a 360**.
+
+Ojo con dos cosas: `filaPendiente.clear()` va al **principio** de `construirFilas()`
+—al final borraría lo que las llamadas a `fila()` acaban de meter— y `.rail:empty`
+necesita `min-height`, que si no el contenido de abajo sube y baja según se pinta y
+el scroll da saltos.
 
 ### El panel de filtros
 

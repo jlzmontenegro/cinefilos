@@ -162,6 +162,69 @@ export function crearClasificador() {
     return principal ? [principal] : [];
   }
 
+  /* ---------- qué trae de verdad el vídeo de una serie ----------
+     No hace falta preguntarle a nadie: ok.ru pone en el nombre del vídeo el tramo
+     que se subió — «2026 Lucky e1-4», «2019 Undone s1 e1-8», «Unbelievable S01E01»,
+     y también en fichas con el nombre ofuscado, «th3-4ct-s1-e1-8-2019». Lo trae
+     268 de las 405 series. Es literal del origen; deducirlo de la duración sería
+     adivinar, porque un vídeo de tres horas puede ser cuatro episodios o un montaje.
+     Nada que ver con el número de episodios que la obra tiene en total: eso lo
+     dice la sinopsis, y se lee aparte en `episodiosTotales()`. */
+  function tramoVideo(videoName) {
+    if (!videoName) return null;
+    // Se separan los puntos y guiones bajos de los nombres tipo «53v3r.s01e01.m720p»
+    const v = ' ' + fold(videoName).replace(/[._]/g, ' ') + ' ';
+    let temporada = null, desde = null, hasta = null;
+
+    // Primero la forma pegada s01e01, que si no la 's' y la 'e' se leen sueltas
+    const junto = /(?:^|[\s-])s(\d{1,2})\s*e(\d{1,3})(?:\s*-\s*e?(\d{1,3}))?(?![\da-z])/.exec(v);
+    if (junto) {
+      temporada = +junto[1]; desde = +junto[2]; hasta = junto[3] ? +junto[3] : +junto[2];
+    } else {
+      const t = /(?:^|[\s-])s(\d{1,2})(?![\da-z])/.exec(v);
+      if (t) temporada = +t[1];
+      const e = /(?:^|[\s-])e(\d{1,3})(?:\s*-\s*e?(\d{1,3}))?(?![\da-z])/.exec(v);
+      if (e) { desde = +e[1]; hasta = e[2] ? +e[2] : +e[1]; }
+    }
+    if (desde == null && temporada == null) return null;
+    if (hasta != null && desde != null && hasta < desde) hasta = desde;   // «e5-2» no dice nada
+    return { temporada, desde, hasta };
+  }
+
+  /* Cuántos episodios tiene la obra entera. Lo declara la propia sinopsis
+     («constó de siete episodios», «una serie de tres partes»), en 264 de 405. */
+  const NUMERO = {
+    dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7,
+    ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12,
+  };
+  function episodiosTotales(sinopsis) {
+    const t = fold(sinopsis);
+    const cifra = /\b(\d{1,3})\s*(?:episodios|capitulos|partes|entregas)\b/.exec(t);
+    if (cifra) return +cifra[1];
+    const letra = /\b(dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s+(?:episodios|capitulos|partes|entregas)\b/.exec(t);
+    return letra ? NUMERO[letra[1]] : null;
+  }
+
+  /* Junta las dos lecturas en `[temporada, desde, hasta, total]`, con null en lo
+     que no se sepa, o null entero si no se sabe nada. Va como lista y no como
+     objeto porque el HTML guarda los datos por columnas y así ocupa cuatro
+     números en vez de cuatro nombres de campo repetidos 400 veces. */
+  const TIPOS_SERIE = ['Serie', 'Miniserie', 'Serie documental'];
+  function tramoSerie(r, sinopsis, tipoObra) {
+    /* Sólo para series. En una película «partes» habla de otra cosa y colaba 77
+       fichas: «narra tres historias sobre parejas de diferentes partes de Italia»,
+       «la segunda entrega de la serie de películas de dos partes». */
+    if (!TIPOS_SERIE.includes(tipoObra)) return null;
+    const t = tramoVideo(r && r.videoName);
+    let total = episodiosTotales(sinopsis);
+    /* Si el vídeo llega más lejos que el total declarado, el total no habla de
+       episodios: «Cien años de soledad» se estrenó en 2 partes y el vídeo trae
+       e1-4. Antes que enseñar «E1-4 de 2» se prefiere no decir el total. */
+    if (total != null && t && t.hasta != null && t.hasta > total) total = null;
+    if (!t && total == null) return null;
+    return [t ? t.temporada : null, t ? t.desde : null, t ? t.hasta : null, total];
+  }
+
   // ---------- tipo de obra ----------
   function tipo(texto) {
     const t = fold(texto);
@@ -302,6 +365,7 @@ export function crearClasificador() {
 
     const def = clausulaDefinitoria(sinopsis);
     const pais = paises(def);
+    const tipoObra = tipo(def);
 
     return {
       id: r.id,
@@ -315,7 +379,8 @@ export function crearClasificador() {
       paises: pais,
       banderas: pais.map((x) => FLAG[x] || '🏳️'),
       generos: generos(def + ' ' + (p.notas || '')),
-      tipo: tipo(def),
+      tipo: tipoObra,
+      tramo: tramoSerie(r, sinopsis, tipoObra),
       idioma: idioma(p.notas, cabecera),
       notas: p.notas || null,
       sinopsis,

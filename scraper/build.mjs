@@ -16,7 +16,7 @@ const tpl = fs.readFileSync('template.html', 'utf8');
 --------------------------------------------------------------------------- */
 const CAMPOS = ['id', 'tituloOriginal', 'tituloAlt', 'anio', 'directores', 'paises', 'generos',
   'tipo', 'idioma', 'notas', 'sinopsis', 'imdb', 'filmaffinity', 'duracion', 'poster',
-  'videoId', 'embed', 'fecha'];
+  'videoId', 'embed', 'fecha', 'tramo'];
 const PREFIJO_POSTER = 'https://i.okcdn.ru/i?r=';
 
 function compactar(db) {
