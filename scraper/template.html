@@ -349,6 +349,19 @@ body.en-series .card .tags .chip.serie:not(.eps){display:none}
 #cierre{padding:54px clamp(14px,3vw,34px) 40px;text-align:center;
   font-size:13.5px;line-height:1.7;color:var(--txt-dim);max-width:860px;margin:0 auto}
 #cierre p{margin:0 auto;max-width:56ch}
+/* La cita. Las comillas van dibujadas con ::before/::after y no en el texto, así
+   el propio texto sigue siendo copiable y buscable sin ellas. */
+#cita{margin:30px auto 0;max-width:52ch;cursor:pointer;
+  transition:opacity .3s var(--ease)}
+#cita:hover{opacity:.72}
+#cita p{margin:0;font-size:16px;line-height:1.55;color:var(--txt);
+  font-weight:450;letter-spacing:-.01em;text-wrap:balance}
+#cita p.repl{font-style:italic}
+#cita p::before{content:'“'} #cita p::after{content:'”'}
+#cita cite{display:block;margin-top:10px;font-style:normal;font-size:11.5px;
+  font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+#cita cite::before{content:'— '}
+@media(max-width:640px){#cita p{font-size:15px}}
 /* Apoyo al proyecto: apagado hasta que se pasa por encima, para que esté ahí
    sin pedir nada a gritos. */
 .apoyo{display:inline-flex;align-items:center;gap:8px;margin-top:24px;height:34px;padding:0 16px;
@@ -816,8 +829,7 @@ body.panel-abierto #toast.on{transform:translate(-50%,140%);pointer-events:none}
   </div>
   <footer id="cierre">
     <div class="cifras" id="cifras" aria-label="El catálogo en cifras"></div>
-    <p>Si estás viendo esto es porque lo desarrollamos para que te diviertas y disfrutes
-    de las mejores películas</p>
+    <blockquote id="cita" title="Otra cita"></blockquote>
     <button class="apoyo" onclick="App.abrirCafe()" title="Apoyar el proyecto">
       <span aria-hidden="true">☕</span> Invítanos un café
     </button>
@@ -1297,6 +1309,45 @@ function construirFilas(base = M) {
   }
   $('#rows-view').innerHTML = html.join('');
   activarFilas();
+}
+
+/* ---------- la cita del pie ----------
+   Dos clases de cita: réplicas de película, atribuidas al título y su año, y frases
+   de cineastas sobre el oficio, atribuidas a la persona. `peli:true` distingue las
+   primeras para poder ponerlas en cursiva.
+   Se sortea una en cada carga —como el héroe, así cada visitante ve la suya— y al
+   pinchar sale otra. Sin temporizador: una frase que cambia sola mientras la lees
+   es justo lo que se quitó de la franja de cifras. */
+const CITAS = [
+  ['Siempre nos quedará París.', 'Casablanca (1942)', true],
+  ['Le haré una oferta que no podrá rechazar.', 'El padrino (1972)', true],
+  ['Nadie es perfecto.', 'Con faldas y a lo loco (1959)', true],
+  ['He visto cosas que vosotros no creeríais.', 'Blade Runner (1982)', true],
+  ['Abróchense los cinturones, va a ser una noche movidita.', 'Eva al desnudo (1950)', true],
+  ['Podría haber sido un contendiente. Podría haber sido alguien.', 'La ley del silencio (1954)', true],
+  ['Que la Fuerza te acompañe.', 'La guerra de las galaxias (1977)', true],
+  ['Está bien, señor DeMille, ya estoy lista para mi primer plano.', 'El crepúsculo de los dioses (1950)', true],
+  ['La vida es como una caja de bombones: nunca sabes lo que te va a tocar.', 'Forrest Gump (1994)', true],
+  ['Al infinito y más allá.', 'Toy Story (1995)', true],
+  ['El cine es la verdad veinticuatro veces por segundo.', 'Jean-Luc Godard', false],
+  ['El drama es la vida a la que se le han quitado las partes aburridas.', 'Alfred Hitchcock', false],
+  ['Si se puede escribir o pensar, se puede filmar.', 'Stanley Kubrick', false],
+  ['El cine es esculpir en el tiempo.', 'Andréi Tarkovski', false],
+  ['El cine parece haber sido inventado para expresar la vida del subconsciente.', 'Luis Buñuel', false],
+  ['Un escritor necesita una pluma; un pintor, un pincel; un cineasta, un ejército.', 'Orson Welles', false],
+  ['El cine es una cuestión de qué hay dentro del encuadre y qué se queda fuera.', 'Martin Scorsese', false],
+  ['Las películas son más armoniosas que la vida.', 'François Truffaut', false],
+  ['Si tienes un problema en el tercer acto, el problema de verdad está en el primero.', 'Billy Wilder', false],
+];
+let citaI = -1;
+function pintarCita() {
+  // Nunca repite la que ya estaba: pinchar y que no cambie nada parece que falla
+  let i = citaI;
+  while (CITAS.length > 1 && i === citaI) i = Math.floor(Math.random() * CITAS.length);
+  citaI = i;
+  const [texto, autor, peli] = CITAS[i];
+  $('#cita').innerHTML = `<p${peli ? ' class="repl"' : ''}>${esc(texto)}</p>
+    <cite>${esc(autor)}</cite>`;
 }
 
 /* Las cifras del catálogo. Antes iban en una franja amarilla que se deslizaba sin
@@ -2133,6 +2184,8 @@ function avisoNovedades() {
 $('#new-count').textContent = NOVEDADES.size;
 $('#btn-new').style.display = NOVEDADES.size ? '' : 'none';
 construirTicker();
+pintarCita();
+$('#cita').addEventListener('click', pintarCita);
 construirFiltros();
 App.aplicar();   // arma portada y héroe de la sección que toque
 // Si se ha llegado con un enlace directo, se abre lo que toque

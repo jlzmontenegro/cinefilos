@@ -356,6 +356,23 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
   rejilla desde arriba y el usuario pierde el sitio donde iba. Y no rehace el héroe,
   que resortearía las seis destacadas cada vez que le das a reproducir.
 
+### La cita del pie
+
+Donde había una frase fija hay ahora una cita sorteada de `CITAS`, 19 en total y de
+dos clases: réplicas de película —atribuidas al título y su año, en cursiva— y frases
+de cineastas sobre el oficio, atribuidas a la persona. El tercer elemento de cada
+entrada (`peli`) es lo que las distingue.
+
+Se sortea en cada carga, como el héroe, y al pinchar sale otra; nunca repite la que
+estaba, que pinchar y que no cambie nada parece que falla. **Sin temporizador a
+propósito**: una frase que se mueve sola mientras la lees es exactamente lo que se
+quitó de la franja de cifras.
+
+Si se añaden más: cortas y **bien atribuidas**. Cuidado con las que "todo el mundo
+sabe" y son falsas — en *Casablanca* nadie dice «tócala otra vez, Sam», y en *El
+imperio contraataca* la réplica es «no, yo soy tu padre». Las comillas se dibujan con
+`::before`/`::after` para que el texto siga siendo copiable sin ellas.
+
 ### La portada se pinta a medida que se baja
 
 Las carátulas de cada fila **no** se construyen al armar la portada: se guardan en
