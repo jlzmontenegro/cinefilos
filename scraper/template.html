@@ -643,7 +643,6 @@ select.sel option{background:#12151f;color:#f2f3f7}
   background:#05070d;transition:opacity .45s var(--ease)}
 #player.listo .cargando{opacity:0;pointer-events:none}
 #player .cargando b{font-size:14px;font-weight:650}
-#player .cargando small{font-size:12px;color:var(--txt-faint);max-width:34ch;line-height:1.45}
 #player .cargando a{margin-top:3px;font-size:12.5px;font-weight:600;color:var(--accent);
   text-decoration:none;border:1px solid var(--stroke);padding:8px 15px;border-radius:var(--r-pill)}
 #player .cargando a:hover{background:var(--glass-hi)}
@@ -1946,7 +1945,6 @@ function reproducir(vid) {
     <div class="cargando">
       <span class="giro" aria-hidden="true"></span>
       <b>Abriendo el reproductor…</b>
-      <small>ok.ru tarda unos segundos en dar la primera imagen.</small>
       <a href="${esc(url)}" target="_blank" rel="noopener">Verlo en ok.ru ↗</a>
     </div>`;
   /* `load` avisa de que ha llegado el documento del reproductor, no de que el
