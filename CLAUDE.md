@@ -401,6 +401,34 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
   rejilla desde arriba y el usuario pierde el sitio donde iba. Y no rehace el héroe,
   que resortearía las seis destacadas cada vez que le das a reproducir.
 
+### El reproductor tarda, no está roto
+
+Se reportó «no reproduce». No era verdad, y la causa merece quedar escrita porque
+vuelve a parecer un fallo cada vez. Lo comprobado:
+
+| Prueba | Resultado |
+|---|---|
+| Cabeceras de `ok.ru/videoembed/…` | **200**, sin `X-Frame-Options` ni `frame-ancestors`: sigue permitiendo incrustar |
+| Manifiesto HLS de cinco vídeos distintos | **200** los cinco, con 4–6 calidades: los streams están vivos |
+| El iframe que monta la página | Correcto: URL, 551×309, `allow` con `autoplay` |
+| ok.ru abierto **suelto** en una pestaña | Arranca |
+| ok.ru **incrustado**, a los 5 s | Rectángulo negro, nada |
+| ok.ru **incrustado**, a los 15 s | Reproduciendo |
+
+O sea: **entre 5 y 15 segundos desde el clic hasta la primera imagen**, y hasta
+entonces un rectángulo negro sin ninguna explicación. La gente pulsa, ve el negro,
+da por roto lo que sólo está cargando y se va.
+
+Por eso `reproducir()` pinta encima una tapadera (`.cargando`) con aspa, el aviso de
+que ok.ru tarda, y un enlace **«Verlo en ok.ru ↗»** como salida de emergencia. Se
+retira cuando el iframe dispara `load`.
+
+Dos cosas que no se pueden hacer y conviene no intentar: **saber si el vídeo ha
+empezado** —es otro dominio, no deja preguntar; `load` sólo dice que llegó el
+documento del reproductor— y fiarse de un `.click()` por JS para probarlo, porque no
+cuenta como gesto del usuario y el navegador bloquea el autoplay. Para medir esto hay
+que pulsar con el ratón de verdad.
+
 ### La cita del pie
 
 Donde había una frase fija hay ahora una cita sorteada de `CITAS`, **34** en total y
