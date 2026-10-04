@@ -631,24 +631,9 @@ select.sel option{background:#12151f;color:#f2f3f7}
 .dl dd .lnk{color:var(--accent);cursor:pointer}
 .dl dd .lnk:hover{text-decoration:underline}
 #player{margin-top:16px;border-radius:18px;overflow:hidden;aspect-ratio:16/9;background:#05070d;
-  border:1px solid var(--stroke);display:none;position:relative}
+  border:1px solid var(--stroke);display:none}
 #player.on{display:block}
 #player iframe{width:100%;height:100%;border:0;display:block}
-/* Tapadera mientras ok.ru arranca. Medido: entre 5 y 15 segundos desde que se
-   pulsa hasta la primera imagen, y hasta entonces el hueco es un rectángulo negro
-   sin explicación. Así se ve que está pasando algo, y queda a mano la salida por
-   si no arranca. */
-#player .cargando{position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:9px;text-align:center;padding:18px;
-  background:#05070d;transition:opacity .45s var(--ease)}
-#player.listo .cargando{opacity:0;pointer-events:none}
-#player .cargando b{font-size:14px;font-weight:650}
-#player .cargando a{margin-top:3px;font-size:12.5px;font-weight:600;color:var(--accent);
-  text-decoration:none;border:1px solid var(--stroke);padding:8px 15px;border-radius:var(--r-pill)}
-#player .cargando a:hover{background:var(--glass-hi)}
-#player .giro{width:26px;height:26px;border-radius:50%;border:2px solid var(--stroke);
-  border-top-color:var(--accent);animation:giro 1s linear infinite}
-@keyframes giro{to{transform:rotate(1turn)}}
 .close-x{position:absolute;top:14px;right:14px;z-index:5;width:36px;height:36px;border-radius:50%;
   border:1px solid var(--stroke);background:rgba(8,10,18,.55);color:#fff;cursor:pointer;font-size:16px;
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);display:grid;place-items:center}
@@ -1946,50 +1931,9 @@ addEventListener('hashchange', () => {
 });
 function reproducir(vid) {
   const p = $('#player');
-  const url = 'https://ok.ru/videoembed/' + encodeURIComponent(vid);
-  p.className = 'on';   // quita el 'listo' de la reproducción anterior
-  p.innerHTML = `
-    <iframe src="${esc(url)}?autoplay=1"
-      allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe>
-    <div class="cargando">
-      <span class="giro" aria-hidden="true"></span>
-      <b>Abriendo el reproductor…</b>
-      <a href="${esc(url)}" target="_blank" rel="noopener">Verlo en ok.ru ↗</a>
-    </div>`;
-  /* La tapadera NO se quita con el `load` del iframe: ése llega a los 1,8 s, mucho
-     antes de la primera imagen, y dejaba el rectángulo negro a la vista.
-     El reproductor de ok.ru habla por `postMessage`, y escuchándolo se vio que sólo
-     manda tres cosas —`inited`, `volumechange` y `autoplay`—; **no existe ningún
-     evento «playing»**, así que `autoplay` (hacia los 4,7 s) es lo más cerca que se
-     puede estar de «ha empezado». Con eso se destapa. */
-  /* Hay que pedírselo: callado por su cuenta no manda nada. En la prueba sin esta
-     suscripción no llegó ni un aviso en 20 s; con ella, `autoplay` a los 4,7 s. */
-  const marco = p.querySelector('iframe');
-  marco.addEventListener('load', () => {
-    try {
-      marco.contentWindow.postMessage(
-        JSON.stringify({ id: 'cf', jsonrpc: '2.0', method: 'addEventListener', params: ['*'] }), '*');
-    } catch {}   // si el navegador lo impide, queda la red de seguridad
-  });
-
-  if (reproducir._escucha) removeEventListener('message', reproducir._escucha);
-  reproducir._escucha = (e) => {
-    if (e.origin !== 'https://ok.ru' || typeof e.data !== 'string') return;
-    if (!/"event"\s*:\s*"(autoplay|playing|play)"/.test(e.data)) return;
-    p.classList.add('listo');
-    removeEventListener('message', reproducir._escucha);
-    reproducir._escucha = null;
-  };
-  addEventListener('message', reproducir._escucha);
-
-  /* Red de seguridad. El aviso del reproductor es poco de fiar —hay reproducciones
-     enteras en las que no manda ni uno—, y la tapadera no sólo oculta: también
-     tapa el botón de play de ok.ru. Cuando el navegador bloquea el autoplay, ese
-     botón es justo lo que hay que pulsar, así que dejarla puesta impediría arrancar
-     la película. Diez segundos es el tope. */
-  clearTimeout(reproducir._red);
-  reproducir._red = setTimeout(() => p.classList.add('listo'), 10000);
-
+  p.innerHTML = `<iframe src="https://ok.ru/videoembed/${encodeURIComponent(vid)}?autoplay=1"
+    allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+  p.classList.add('on');
   p.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
@@ -2097,10 +2041,6 @@ const App = {
   toggleSeries() { S.soloSeries = !S.soloSeries; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
   closeModal() {
     $('#modal').classList.remove('open'); $('#sheet').innerHTML = '';
-    // La ficha se va y con ella el reproductor: no dejar colgando ni la escucha
-    // de sus avisos ni la red de seguridad de la tapadera.
-    if (reproducir._escucha) { removeEventListener('message', reproducir._escucha); reproducir._escucha = null; }
-    clearTimeout(reproducir._red);
     fichaAbierta = null;
     document.body.style.overflow = ''; ponerHash(null);
   },
@@ -2108,7 +2048,7 @@ const App = {
   azar() {
     const pool = (hayFiltros() ? filtrar() : M).filter(m => m.sinopsis);
     if (!pool.length) return;
-    abrirModal(pool[Math.floor(Math.random() * pool.length)].id, true);
+    abrirModal(pool[Math.floor(Math.random() * pool.length)].id, false);
   },
   set(patch) {
     Object.entries(patch).forEach(([k, v]) => {
@@ -2184,9 +2124,7 @@ document.addEventListener('click', e => {
   if (olvidar) { olvidarVistos(); return; }
 
   const c = t.closest('.card');
-  // Abrir una ficha es querer verla: arranca sola. «Más información» del héroe es
-  // la única puerta que sigue sin reproducir, porque ahí se pide lo contrario.
-  if (c) { abrirModal(c.dataset.id, true, c.querySelector('img')); return; }
+  if (c) { abrirModal(c.dataset.id, false, c.querySelector('img')); return; }
 
   const rail = t.closest('[data-rail]');
   if (rail) {
@@ -2228,7 +2166,7 @@ document.addEventListener('click', e => {
   const lam = t.closest('[data-h]');
   if (lam) {
     const i = +lam.dataset.h;
-    if (i === heroI) abrirModal(heroList[i].id, true, lam.querySelector('img'));
+    if (i === heroI) abrirModal(heroList[i].id, false, lam.querySelector('img'));
     else pintarHero(i);
     return;
   }
@@ -2287,7 +2225,7 @@ document.addEventListener('keydown', e => {
     else if ($('#filters').classList.contains('open')) App.closeFilters();
   }
   if (e.key === 'Enter' && document.activeElement?.classList.contains('card')) {
-    abrirModal(document.activeElement.dataset.id, true);
+    abrirModal(document.activeElement.dataset.id, false);
   }
 });
 

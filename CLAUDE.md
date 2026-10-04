@@ -401,33 +401,40 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
   rejilla desde arriba y el usuario pierde el sitio donde iba. Y no rehace el héroe,
   que resortearía las seis destacadas cada vez que le das a reproducir.
 
-### El reproductor tarda, no está roto
+### El reproductor: un fallo real y mucho ruido alrededor
 
-Se reportó «no reproduce». No era verdad, y la causa merece quedar escrita porque
-vuelve a parecer un fallo cada vez. Lo comprobado:
+Se reportó «no reproduce». **Había un fallo de verdad, y estaba en el hash.**
+
+`ponerHash()` se protege con la guardia `ignorarHash`, que levanta en un
+`setTimeout(0)`. Pero el evento `hashchange` llega a veces **después** de eso, y
+entonces su manejador ejecutaba `abrirModal(id, false)` — que repinta la ficha
+entera y **destruye el reproductor recién creado**. La película se quedaba sin
+arrancar sin que nada lo explicara. Por eso el manejador compara ahora con
+`fichaAbierta` y no toca nada si ya está pintada esa misma ficha.
+
+Alrededor de eso se midió bastante, y conviene no repetirlo:
 
 | Prueba | Resultado |
 |---|---|
 | Cabeceras de `ok.ru/videoembed/…` | **200**, sin `X-Frame-Options` ni `frame-ancestors`: sigue permitiendo incrustar |
 | Manifiesto HLS de cinco vídeos distintos | **200** los cinco, con 4–6 calidades: los streams están vivos |
-| El iframe que monta la página | Correcto: URL, 551×309, `allow` con `autoplay` |
-| ok.ru abierto **suelto** en una pestaña | Arranca |
-| ok.ru **incrustado**, a los 5 s | Rectángulo negro, nada |
-| ok.ru **incrustado**, a los 15 s | Reproduciendo |
+| `apuntarVisto()` + crear el iframe | **13 ms + 1 ms**: nuestro código no retrasa nada |
+| `load` del iframe | **1,2–1,8 s** |
+| Página pelada, **sólo** el iframe sin nada del catálogo | Igual de lenta → **el retraso lo pone ok.ru** |
 
-O sea: **entre 5 y 15 segundos desde el clic hasta la primera imagen**, y hasta
-entonces un rectángulo negro sin ninguna explicación. La gente pulsa, ve el negro,
-da por roto lo que sólo está cargando y se va.
+Y dos cosas que se intentaron y **no funcionan**, para no volver a gastarlas:
 
-Por eso `reproducir()` pinta encima una tapadera (`.cargando`) con aspa, el aviso de
-que ok.ru tarda, y un enlace **«Verlo en ok.ru ↗»** como salida de emergencia. Se
-retira cuando el iframe dispara `load`.
+- **Tapar el hueco negro con un aviso de «cargando».** Se probó y se quitó: la
+  tapadera cubre también el botón de play de ok.ru, que es justo lo que hay que
+  pulsar cuando el navegador bloquea el autoplay. Estorbaba más que ayudaba.
+- **Saber cuándo empieza la película.** El reproductor sí habla por `postMessage`
+  (`inited`, `volumechange`, `autoplay`), pero **no existe ningún evento `playing`**
+  y los que hay no llegan de forma fiable: hay reproducciones enteras sin un solo
+  aviso. No se puede atar nada a eso.
 
-Dos cosas que no se pueden hacer y conviene no intentar: **saber si el vídeo ha
-empezado** —es otro dominio, no deja preguntar; `load` sólo dice que llegó el
-documento del reproductor— y fiarse de un `.click()` por JS para probarlo, porque no
-cuenta como gesto del usuario y el navegador bloquea el autoplay. Para medir esto hay
-que pulsar con el ratón de verdad.
+Para medirlo hay que **pulsar con el ratón de verdad**: un `.click()` por JS no
+cuenta como gesto del usuario y el navegador bloquea el autoplay, así que da un
+falso «no reproduce».
 
 ### La cita del pie
 
