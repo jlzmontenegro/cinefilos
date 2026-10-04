@@ -18,12 +18,25 @@
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { sleep } from './lib.mjs';
+import { crearClasificador } from './clasificar.mjs';
+
+const CLAS = crearClasificador();
 
 const OUT = 'raw.jsonl';
 const SOLO_COMPROBAR = !!process.env.SOLO_COMPROBAR;
 const DIAS = Number(process.env.DIAS || 0);
 const LIMITE = Number(process.env.LIMITE || 0);
-const CONCURRENCIA = 6;
+/* Despacio y de dos en dos. Con seis en paralelo y 80 ms de pausa, ok.ru empezó a
+   devolver la página del reproductor sin datos a partir del registro 600, y el
+   repaso dio por muertas más de 2.000 películas que estaban perfectamente vivas. */
+const CONCURRENCIA = 2;
+const PAUSA = 700;
+
+/* Tope de cordura. Las muestras honestas dieron entre un 8 y un 13 % de vídeos
+   retirados; si sale mucho más, no es que el grupo haya borrado medio catálogo,
+   es que nos están limitando. En ese caso no se escribe NADA: más vale no hacer
+   nada que sacar cientos de películas buenas. */
+const TOPE_CORDURA = 25;
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
 
@@ -104,9 +117,11 @@ if (!conVideo.length) { console.log('Nada que comprobar.'); process.exit(0); }
 
 let vivos = 0, muertos = 0, dudosos = 0, resucitados = 0, n = 0;
 const ahora = new Date().toISOString();
+const caidos = [];   // para el informe en seco
 
 await enTandas(conVideo, CONCURRENCIA, async (r) => {
   const hay = await confirmarMuerto(r.videoId);
+  if (hay === false) caidos.push(r);
   if (hay === null) { dudosos++; }
   else if (hay) {
     vivos++;
@@ -119,7 +134,7 @@ await enTandas(conVideo, CONCURRENCIA, async (r) => {
     r.videoChk = ahora;
   }
   if (++n % 200 === 0) process.stdout.write(`  ${n}/${conVideo.length} · ${muertos} sin vídeo\n`);
-  await sleep(80);
+  await sleep(PAUSA);
 });
 
 const pct = conVideo.length ? ((muertos / (vivos + muertos || 1)) * 100).toFixed(1) : '0';
@@ -127,7 +142,47 @@ console.log(`\ncon vídeo: ${vivos} · sin vídeo: ${muertos} (${pct}%)` +
   (resucitados ? ` · recuperados: ${resucitados}` : '') +
   (dudosos ? ` · sin respuesta (no se tocan): ${dudosos}` : ''));
 
-if (SOLO_COMPROBAR) { console.log('\n(SOLO_COMPROBAR: no se ha escrito nada)'); process.exit(0); }
+/* Si la proporción es disparatada, lo que falla es la medición, no el catálogo.
+   Pasó de verdad: una pasada completa dio más de 2.000 películas por muertas y al
+   comprobarlas despacio estaban todas vivas. Antes que escribir eso, no se escribe. */
+if (!SOLO_COMPROBAR && Number(pct) > TOPE_CORDURA) {
+  console.error(`\n✗ ABORTADO: ${pct}% sin vídeo supera el tope de cordura (${TOPE_CORDURA}%).`);
+  console.error('  Eso no es el grupo borrando películas, es ok.ru limitando peticiones.');
+  console.error('  No se ha escrito nada. Repítelo más despacio o en varias tandas con DIAS.');
+  process.exit(1);
+}
+
+if (SOLO_COMPROBAR) {
+  /* Lo que de verdad hay que decidir no es el porcentaje, sino cuántas fichas
+     desaparecerían. Las que tienen fuente alternativa se quedan; las que no, salen.
+     Se deja la lista por escrito para poder revisarla antes de tocar nada. */
+  // Quien sabe si hay fuente alternativa es el clasificador, el mismo que usa
+  // normalize.mjs. Preguntárselo evita inventarse aquí una regla paralela.
+  const tieneAlternativa = (r) => {
+    try { return !!CLAS.construirPelicula(r)?.embed; } catch { return false; }
+  };
+  const seQuedan = caidos.filter(tieneAlternativa);
+  const seVan = caidos.filter((r) => !tieneAlternativa(r));
+  console.log(`\nSi se aplicara:`);
+  console.log(`  se quedan con fuente alternativa: ${seQuedan.length}`);
+  console.log(`  SALEN del catálogo:               ${seVan.length}`);
+  const informe = [
+    `Vídeos retirados en ok.ru — ${ahora}`,
+    `comprobados: ${conVideo.length} · sin vídeo: ${muertos} · sin respuesta: ${dudosos}`,
+    `se quedan con fuente alternativa: ${seQuedan.length}`,
+    `salen del catálogo: ${seVan.length}`,
+    '',
+    '--- SALEN DEL CATÁLOGO ---',
+    ...seVan.map((r) => `${r.id}\t${(r.headline || '').slice(0, 90)}`),
+    '',
+    '--- SE QUEDAN CON FUENTE ALTERNATIVA ---',
+    ...seQuedan.map((r) => `${r.id}\t${(r.headline || '').slice(0, 90)}`),
+  ].join('\n');
+  fs.writeFileSync('videos-retirados.txt', informe);
+  console.log(`\n✓ informe en scraper/videos-retirados.txt`);
+  console.log('(SOLO_COMPROBAR: no se ha escrito nada en raw.jsonl)');
+  process.exit(0);
+}
 
 if (muertos || resucitados) {
   // Temporal y renombrado: un corte a mitad no deja raw.jsonl a medias.
