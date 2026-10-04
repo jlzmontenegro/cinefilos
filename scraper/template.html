@@ -1863,6 +1863,12 @@ function pintarModal(m, autoplay) {
         <div class="acts">
           ${m.videoId ? `<button class="btn-primary" data-play="${m.videoId}" data-pel="${m.id}">▶ Reproducir</button>` : ''}
           ${m.embed ? `<a class="btn-ghost btn-alt" href="${esc(m.embed)}" target="_blank" rel="noopener" data-pel="${m.id}">▶ Fuente alternativa ↗</a>` : ''}
+          ${/* El reproductor incrustado tarda entre 5 y 18 segundos y a veces se
+                queda en negro; abierto en ok.ru arranca siempre que el vídeo siga
+                existiendo. Comprobado: el mismo vídeo que no levantaba dentro del
+                iframe reproducía suelto. Es la salida garantizada, y está a la
+                vista en vez de escondida detrás de un aviso. */''}
+          ${m.videoId ? `<a class="btn-ghost" href="${esc(m.url)}" target="_blank" rel="noopener" data-pel="${m.id}">Ver en ok.ru ↗</a>` : ''}
           <button class="btn-ghost" data-fav="${m.id}">${FAVS.has(m.id) ? '♥ En mi lista' : '♡ Mi lista'}</button>
           <button class="btn-ghost" onclick="App.compartir('${m.id}')">↗ Compartir</button>
         </div>
@@ -2116,8 +2122,9 @@ document.addEventListener('click', e => {
   const play = t.closest('[data-play]');
   if (play) { apuntarVisto(play.dataset.pel); reproducir(play.dataset.play); return; }
 
-  // La fuente alternativa se abre en otra pestaña, pero también es empezar a ver
-  const alt = t.closest('a.btn-alt[data-pel]');
+  // Las salidas externas —fuente alternativa y «Ver en ok.ru»— abren otra pestaña,
+  // pero también son empezar a ver, así que cuentan para «Seguir viendo».
+  const alt = t.closest('a[data-pel]');
   if (alt) { apuntarVisto(alt.dataset.pel); return; }   // sin return del enlace: sigue navegando
 
   const olvidar = t.closest('[data-olvidar]');
