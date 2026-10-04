@@ -1904,6 +1904,7 @@ function pintarModal(m, autoplay) {
 
   $('#modal').classList.add('open');
   document.body.style.overflow = 'hidden';
+  fichaAbierta = m.id;
   ponerHash(m.id);
   tinteAmbiente(img);
   if (autoplay && m.videoId) { apuntarVisto(m.id); reproducir(m.videoId); }
@@ -1927,11 +1928,19 @@ function ponerHash(valor) {
   setTimeout(() => { ignorarHash = false; }, 0);
 }
 
+/* Qué ficha hay pintada ahora mismo. Sirve para no repintarla por un `hashchange`
+   que en realidad provocamos nosotros. */
+let fichaAbierta = null;
+
 addEventListener('hashchange', () => {
   if (ignorarHash) return;
   const id = idDelHash();
   if (location.hash === '#cafe') App.abrirCafe();
-  else if (id) abrirModal(id, false);
+  /* Si ya está abierta esa misma ficha, no se toca. La guardia `ignorarHash` se
+     levanta en un `setTimeout(0)` y el `hashchange` llega a veces después: entonces
+     esto repintaba la ficha entera —destruyendo el reproductor recién creado— y la
+     película se quedaba sin arrancar sin que nada lo explicara. */
+  else if (id) { if (id !== fichaAbierta) abrirModal(id, false); }
   else if ($('#cafe').classList.contains('on')) App.cerrarCafe();
   else if ($('#modal').classList.contains('open')) App.closeModal();
 });
@@ -1947,11 +1956,40 @@ function reproducir(vid) {
       <b>Abriendo el reproductor…</b>
       <a href="${esc(url)}" target="_blank" rel="noopener">Verlo en ok.ru ↗</a>
     </div>`;
-  /* `load` avisa de que ha llegado el documento del reproductor, no de que el
-     vídeo haya arrancado: es otro dominio y no deja preguntarle. Pero a partir de
-     ahí ok.ru ya pinta su propia interfaz, y seguir tapándola sería peor. Si no
-     carga nunca, la tapadera se queda —con el enlace de salida puesto. */
-  p.querySelector('iframe').addEventListener('load', () => p.classList.add('listo'));
+  /* La tapadera NO se quita con el `load` del iframe: ése llega a los 1,8 s, mucho
+     antes de la primera imagen, y dejaba el rectángulo negro a la vista.
+     El reproductor de ok.ru habla por `postMessage`, y escuchándolo se vio que sólo
+     manda tres cosas —`inited`, `volumechange` y `autoplay`—; **no existe ningún
+     evento «playing»**, así que `autoplay` (hacia los 4,7 s) es lo más cerca que se
+     puede estar de «ha empezado». Con eso se destapa. */
+  /* Hay que pedírselo: callado por su cuenta no manda nada. En la prueba sin esta
+     suscripción no llegó ni un aviso en 20 s; con ella, `autoplay` a los 4,7 s. */
+  const marco = p.querySelector('iframe');
+  marco.addEventListener('load', () => {
+    try {
+      marco.contentWindow.postMessage(
+        JSON.stringify({ id: 'cf', jsonrpc: '2.0', method: 'addEventListener', params: ['*'] }), '*');
+    } catch {}   // si el navegador lo impide, queda la red de seguridad
+  });
+
+  if (reproducir._escucha) removeEventListener('message', reproducir._escucha);
+  reproducir._escucha = (e) => {
+    if (e.origin !== 'https://ok.ru' || typeof e.data !== 'string') return;
+    if (!/"event"\s*:\s*"(autoplay|playing|play)"/.test(e.data)) return;
+    p.classList.add('listo');
+    removeEventListener('message', reproducir._escucha);
+    reproducir._escucha = null;
+  };
+  addEventListener('message', reproducir._escucha);
+
+  /* Red de seguridad. El aviso del reproductor es poco de fiar —hay reproducciones
+     enteras en las que no manda ni uno—, y la tapadera no sólo oculta: también
+     tapa el botón de play de ok.ru. Cuando el navegador bloquea el autoplay, ese
+     botón es justo lo que hay que pulsar, así que dejarla puesta impediría arrancar
+     la película. Diez segundos es el tope. */
+  clearTimeout(reproducir._red);
+  reproducir._red = setTimeout(() => p.classList.add('listo'), 10000);
+
   p.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
@@ -2059,13 +2097,18 @@ const App = {
   toggleSeries() { S.soloSeries = !S.soloSeries; this.aplicar(); scrollTo({top:0,behavior:'smooth'}); },
   closeModal() {
     $('#modal').classList.remove('open'); $('#sheet').innerHTML = '';
+    // La ficha se va y con ella el reproductor: no dejar colgando ni la escucha
+    // de sus avisos ni la red de seguridad de la tapadera.
+    if (reproducir._escucha) { removeEventListener('message', reproducir._escucha); reproducir._escucha = null; }
+    clearTimeout(reproducir._red);
+    fichaAbierta = null;
     document.body.style.overflow = ''; ponerHash(null);
   },
   /* Una recomendación al azar entre lo que hay filtrado ahora mismo */
   azar() {
     const pool = (hayFiltros() ? filtrar() : M).filter(m => m.sinopsis);
     if (!pool.length) return;
-    abrirModal(pool[Math.floor(Math.random() * pool.length)].id, false);
+    abrirModal(pool[Math.floor(Math.random() * pool.length)].id, true);
   },
   set(patch) {
     Object.entries(patch).forEach(([k, v]) => {
@@ -2141,7 +2184,9 @@ document.addEventListener('click', e => {
   if (olvidar) { olvidarVistos(); return; }
 
   const c = t.closest('.card');
-  if (c) { abrirModal(c.dataset.id, false, c.querySelector('img')); return; }
+  // Abrir una ficha es querer verla: arranca sola. «Más información» del héroe es
+  // la única puerta que sigue sin reproducir, porque ahí se pide lo contrario.
+  if (c) { abrirModal(c.dataset.id, true, c.querySelector('img')); return; }
 
   const rail = t.closest('[data-rail]');
   if (rail) {
@@ -2183,7 +2228,7 @@ document.addEventListener('click', e => {
   const lam = t.closest('[data-h]');
   if (lam) {
     const i = +lam.dataset.h;
-    if (i === heroI) abrirModal(heroList[i].id, false, lam.querySelector('img'));
+    if (i === heroI) abrirModal(heroList[i].id, true, lam.querySelector('img'));
     else pintarHero(i);
     return;
   }
@@ -2242,7 +2287,7 @@ document.addEventListener('keydown', e => {
     else if ($('#filters').classList.contains('open')) App.closeFilters();
   }
   if (e.key === 'Enter' && document.activeElement?.classList.contains('card')) {
-    abrirModal(document.activeElement.dataset.id, false);
+    abrirModal(document.activeElement.dataset.id, true);
   }
 });
 
