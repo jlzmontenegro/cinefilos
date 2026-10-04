@@ -31,11 +31,19 @@ let sinFuente = 0;
 // en los filtros y no aparece en el buscador.
 const reproducible = (m) => !!(m && (m.videoId || m.embed));
 
+/* `videoMuerto` lo pone `comprobar-videos.mjs` cuando el vídeo ya no está en ok.ru
+   —retirado o puesto en privado—. El reproductor de esas fichas carga igual y se
+   queda en negro para siempre, así que la reproducción directa deja de contar: si
+   hay fuente alternativa se queda con ella, y si no la hay, la ficha sale del
+   catálogo por la regla de siempre. */
+let sinVideo = 0;
+
 for (const r of raw) {
   if (!r.id || vistos.has(r.id)) continue;
   vistos.add(r.id);
   const m = C.construirPelicula(r);
   if (!m) { descartados++; continue; }
+  if (r.videoMuerto && m.videoId) { m.videoId = null; sinVideo++; }
   if (!reproducible(m)) { sinFuente++; continue; }
   movies.push(corregir(m));
 }
@@ -61,3 +69,5 @@ console.log('con año:', movies.filter((m) => m.anio).length,
   '| reproducción directa:', movies.filter((m) => m.videoId).length,
   '| sólo fuente alternativa:', movies.filter((m) => !m.videoId && m.embed).length,
   '| con póster:', movies.filter((m) => m.poster).length);
+if (sinVideo) console.log('vídeos retirados en ok.ru:', sinVideo,
+  '→ se quedan con fuente alternativa o salen del catálogo');

@@ -10,13 +10,14 @@ on:
   schedule:
     - cron: '17 6 * * *'      # cada día: novedades + repaso de portadas
     - cron: '11 12 * * 5'     # viernes: lo mismo + resumen por correo
+    - cron: '41 3 1 * *'      # día 1 de cada mes: repaso de vídeos retirados
   workflow_dispatch:
     inputs:
       modo:
         description: 'Qué hacer'
         type: choice
         default: novedades
-        options: [novedades, resumen, posters, posters-todas, publicar]
+        options: [novedades, resumen, posters, posters-todas, videos, publicar]
   push:
     branches: [main]
     paths:
@@ -60,6 +61,8 @@ jobs:
             modo="${{ inputs.modo }}"
           elif [ "${{ github.event.schedule }}" = "11 12 * * 5" ]; then
             modo=resumen
+          elif [ "${{ github.event.schedule }}" = "41 3 1 * *" ]; then
+            modo=videos
           elif [ "${{ github.event_name }}" = "push" ]; then
             modo=publicar
           else
@@ -104,6 +107,17 @@ jobs:
         run: |
           node refrescar-posters.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"
           SOLO_CAIDOS=1 node refrescar-posters.mjs 2>&1 | tee -a "$GITHUB_WORKSPACE/salida.txt"
+
+      # Una vez al mes: el grupo retira vídeos de vez en cuando, y esas fichas
+      # prometen «reproducción directa» mientras el reproductor se queda en negro
+      # para siempre. Se marcan y `normalize.mjs` decide: si tienen fuente
+      # alternativa se quedan con ella, y si no, salen del catálogo.
+      # Tarda sus horas —son dos peticiones por título— por eso es mensual.
+      - name: Repasar los vídeos retirados
+        if: steps.modo.outputs.modo == 'videos'
+        working-directory: scraper
+        timeout-minutes: 330
+        run: node comprobar-videos.mjs 2>&1 | tee "$GITHUB_WORKSPACE/salida.txt"
 
       # Se reconstruye siempre, aunque no haya novedades: así la fecha de
       # «actualizado» del catálogo queda al día en cualquier caso.

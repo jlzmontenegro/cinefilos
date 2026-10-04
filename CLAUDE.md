@@ -401,6 +401,45 @@ Un solo archivo, tres `<script>`: el clasificador incrustado, los datos en
   rejilla desde arriba y el usuario pierde el sitio donde iba. Y no rehace el héroe,
   que resortearía las seis destacadas cada vez que le das a reproducir.
 
+### Vídeos retirados: `comprobar-videos.mjs`
+
+El grupo retira vídeos de vez en cuando, o los pone en privado. Esas fichas siguen
+prometiendo «reproducción directa» y el reproductor **se queda en negro para
+siempre**: no es lentitud, no hay nada que esperar. Medido sobre una muestra de 70
+títulos repartidos por el catálogo, un **8,6 %**; sobre 300 seguidos, un 13 %.
+
+`comprobar-videos.mjs` pide el reproductor de cada vídeo y mira si trae manifiesto
+(`hlsManifestUrl`). Marca con **`videoMuerto`** los que no. No borra nada de
+`raw.jsonl`: marcar es reversible y, si ok.ru repone el vídeo, la siguiente pasada
+le quita la marca sola. Quien decide es `normalize.mjs`, aplicando la regla de
+siempre —*sin dónde verla, no entra*—:
+
+- con fuente alternativa (`embed`) → se queda con esa vía, pierde la directa
+- sin nada → sale del catálogo
+
+```bash
+cd scraper && node comprobar-videos.mjs           # todos
+SOLO_COMPROBAR=1 node comprobar-videos.mjs        # informa, no escribe
+DIAS=30 node comprobar-videos.mjs                 # los no mirados en 30 días
+LIMITE=300 node comprobar-videos.mjs              # corta, para probar
+```
+
+Tres cosas que no hay que deshacer:
+
+- **Un «no» se confirma; un «sí» no.** Comprobando la muestra, «Criminal» salió sin
+  manifiesto y al repetirla estaba viva: ok.ru falla de vez en cuando y devuelve la
+  página del reproductor sin los datos. Como marcar de más **saca una película del
+  catálogo**, el fallo se repite antes de creérselo. Equivocarse al decir «viva» no
+  rompe nada; al revés, sí.
+- **Fallo de red ≠ vídeo muerto.** `tieneVideo()` devuelve tres cosas: sí, no y
+  `null`. Con `null` no se toca el registro ni se sella `videoChk`. Es el mismo
+  error que ya se cometió sellando `imageAt` a ciegas.
+- **Hace falta la página entera.** `fetchHead` de `lib.mjs` corta a los 16 KB y el
+  manifiesto vive pasados los 35 KB: con `fetchHead` saldrían todos muertos.
+
+Va en el flujo como modo **`videos`**, el día 1 de cada mes. Mensual y no diario
+porque son dos peticiones por título y tarda horas.
+
 ### El reproductor: un fallo real y mucho ruido alrededor
 
 Se reportó «no reproduce». **Había un fallo de verdad, y estaba en el hash.**
