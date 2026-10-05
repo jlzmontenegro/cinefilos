@@ -1935,9 +1935,18 @@ addEventListener('hashchange', () => {
   else if ($('#cafe').classList.contains('on')) App.cerrarCafe();
   else if ($('#modal').classList.contains('open')) App.closeModal();
 });
+/* NO lleva `?autoplay=1`, y esto es lo que arregló el «se queda en negro».
+   Con el parámetro, el reproductor de ok.ru arranca directo en modo
+   «reproduciendo»; el navegador lo bloquea —ningún gesto del usuario alcanza a un
+   iframe de otro dominio recién creado— y el reproductor **no cae de vuelta al
+   fotograma**: se queda negro, en 00:00/00:00, cargando para siempre.
+   Comprobado el mismo vídeo, misma máquina y mismo momento:
+     sin autoplay → fotograma, botón de play y duración 2:31:59
+     con autoplay → negro total
+   Sin el parámetro sale el cartel con su botón: un clic más, pero se ve. */
 function reproducir(vid) {
   const p = $('#player');
-  p.innerHTML = `<iframe src="https://ok.ru/videoembed/${encodeURIComponent(vid)}?autoplay=1"
+  p.innerHTML = `<iframe src="https://ok.ru/videoembed/${encodeURIComponent(vid)}"
     allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
   p.classList.add('on');
   p.scrollIntoView({ behavior: 'smooth', block: 'center' });
