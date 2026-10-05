@@ -59,19 +59,28 @@ async function enTandas(items, n, fn) {
   return res;
 }
 
-/* Tres respuestas posibles, y la tercera importa tanto como las otras:
-     true  → el reproductor trae manifiesto, hay vídeo
-     false → la página cargó bien y NO trae manifiesto: el vídeo ya no está
+/* Sólo se da un vídeo por perdido cuando **ok.ru lo dice**. Nada de deducirlo.
+     true  → no hay motivo para pensar que falte
+     false → ok.ru responde 404, o declara el vídeo bloqueado
      null  → no se pudo saber (fallo de red, timeout). Ni vivo ni muerto.
-   Lo de `null` no es quisquillosería: marcar un vídeo como muerto por un fallo de
-   red lo sacaría del catálogo sin motivo, y es justo el error que ya se cometió
-   una vez sellando `imageAt` a ciegas. Ante la duda, no se toca. */
+
+   La primera versión miraba si el HTML traía `hlsManifestUrl` y daba por muertas
+   las que no. **Estaba mal y costó caro**: unos vídeos traen el manifiesto en el
+   HTML y otros lo piden después, así que películas perfectamente vivas salían
+   muertas. De tres comprobadas a mano, dos eran falsos positivos — «Na srebrnym
+   globie» (2:37:24) y «Jakob der Lügner» (1:36:06) se reproducen sin problema.
+
+   El mensaje de bloqueo, en cambio, sale sólo en las bloqueadas de verdad y en
+   ninguna viva. Es un marcador positivo y por eso es el que se usa.
+
+   Lo de `null` tampoco es quisquillosería: marcar por un fallo de red sacaría una
+   película del catálogo sin motivo. Ante la duda, no se toca. */
+const BLOQUEADO = /заблокировано|авторских прав|VIDEO_BLOCKED/i;
+
 async function tieneVideo(id) {
   const ctrl = new AbortController();
   const reloj = setTimeout(() => ctrl.abort(), 25000);
   try {
-    // La página entera, no las primeras páginas: el manifiesto vive pasados los
-    // 35 KB y `fetchHead` corta mucho antes.
     const r = await fetch(`https://ok.ru/videoembed/${encodeURIComponent(id)}`, {
       headers: { 'User-Agent': UA, 'Accept-Language': 'es-ES,es;q=0.9' },
       signal: ctrl.signal,
@@ -79,7 +88,7 @@ async function tieneVideo(id) {
     if (r.status === 404) return false;          // ya no existe
     if (!r.ok) return null;                      // 5xx, límite de peticiones…
     const html = await r.text();
-    return html.includes('hlsManifestUrl') || html.includes('dashManifestUrl');
+    return !BLOQUEADO.test(html);
   } catch {
     return null;
   } finally {

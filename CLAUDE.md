@@ -408,11 +408,16 @@ prometiendo «reproducción directa» y el reproductor **se queda en negro para
 siempre**: no es lentitud, no hay nada que esperar. Medido sobre una muestra de 70
 títulos repartidos por el catálogo, un **8,6 %**; sobre 300 seguidos, un 13 %.
 
-`comprobar-videos.mjs` pide el reproductor de cada vídeo y mira si trae manifiesto
-(`hlsManifestUrl`). Marca con **`videoMuerto`** los que no. No borra nada de
-`raw.jsonl`: marcar es reversible y, si ok.ru repone el vídeo, la siguiente pasada
-le quita la marca sola. Quien decide es `normalize.mjs`, aplicando la regla de
-siempre —*sin dónde verla, no entra*—:
+> **La cifra buena es 0,7 %, no el 8–15 % que llegó a decir este archivo.** Ese
+> número salía de un método equivocado (ver más abajo). Con la detección correcta,
+> de 149 títulos comprobados sólo **1** estaba bloqueado.
+
+`comprobar-videos.mjs` pide el reproductor de cada vídeo y **sólo da uno por perdido
+cuando ok.ru lo dice**: un 404, o el mensaje «Видео заблокировано из-за нарушений
+авторских прав» (vídeo bloqueado por derechos de autor). Marca ésos con
+**`videoMuerto`**. No borra nada de `raw.jsonl`: marcar es reversible y, si ok.ru
+repone el vídeo, la siguiente pasada le quita la marca sola. Quien decide es
+`normalize.mjs`, aplicando la regla de siempre —*sin dónde verla, no entra*—:
 
 - con fuente alternativa (`embed`) → se queda con esa vía, pierde la directa
 - sin nada → sale del catálogo
@@ -424,28 +429,32 @@ DIAS=30 node comprobar-videos.mjs                 # los no mirados en 30 días
 LIMITE=300 node comprobar-videos.mjs              # corta, para probar
 ```
 
-> ### ⚠️ El método NO es de fiar todavía. No lo programes.
+> ### ⚠️ El error que costó dos pasadas: deducir en vez de leer
 >
-> Una pasada en seco sobre el catálogo entero dio **más de 2.000 películas por
-> muertas**, y al comprobar seis de ellas despacio **estaban todas vivas**. La
-> progresión lo delataba: entre el registro 600 y el 2.200 el contador subía
-> *exactamente 200 por cada 200 comprobadas* — el 100 %. Eso no es el grupo
-> borrando medio catálogo, es **ok.ru limitando las peticiones** y devolviendo la
-> página del reproductor sin datos.
+> La primera versión daba por muerto todo vídeo cuyo HTML no trajera
+> `hlsManifestUrl`. **Eso está mal**: unos vídeos traen el manifiesto en el HTML y
+> otros lo piden después, así que películas perfectamente vivas salían muertas. De
+> tres comprobadas a mano en el navegador, **dos eran falsos positivos** — «Na
+> srebrnym globie» (2:37:24) y «Jakob der Lügner» (1:36:06) se reproducen bien.
 >
-> Por eso el modo `videos` existe pero **no está programado**: sólo se lanza a mano.
-> Y por eso `comprobar-videos.mjs` aborta sin escribir si la proporción supera el
-> `TOPE_CORDURA` (25 %). Las muestras honestas dan entre 8 y 13 %.
+> Encima, a ritmo rápido ok.ru limita las peticiones y devuelve la página sin datos,
+> lo que multiplicaba el error: una pasada completa dio **más de 2.000 películas por
+> muertas** y seis comprobadas despacio estaban todas vivas. El contador subía
+> *exactamente 200 por cada 200 comprobadas* — el 100 %.
 >
-> **Lo que falta para que sea usable: una forma de distinguir «retirado» de
-> «limitado».** Se intentó y no se encontró:
+> Entre los dos efectos, el método decía 8–15 %. **La cifra real es 0,7 %.**
 >
-> - `RESTRICTED` en el HTML parecía marcar las retiradas, pero de tres muertas
->   conocidas **ninguna** lo traía. Casualidad de una página, no marcador.
-> - `metadataUrl` acompaña siempre al manifiesto, así que no añade nada.
-> - Una ráfaga de 48 peticiones **no** reprodujo la limitación, así que tampoco se
->   pudo caracterizar la respuesta limitada. El disparador es el volumen acumulado,
->   no la ráfaga corta.
+> La lección, que es la de siempre en este proyecto: **no se deduce la ausencia de
+> algo; se busca la afirmación.** El mensaje de bloqueo sale sólo en las bloqueadas
+> y en ninguna viva. Lo que se intentó y no sirve, para no repetirlo:
+>
+> - **Falta de `hlsManifestUrl`** → dos falsos positivos de cada tres.
+> - **`RESTRICTED` en el HTML** → de tres bloqueadas conocidas, ninguna lo traía.
+> - **`metadataUrl`** → acompaña al manifiesto, así que hereda su mismo fallo.
+>
+> El modo `videos` existe pero **no está programado**: sólo a mano. Y el script
+> aborta sin escribir si la proporción supera el `TOPE_CORDURA` (25 %), que con la
+> detección buena no debería acercarse ni de lejos.
 
 Tres cosas que sí quedaron claras y no hay que deshacer:
 
@@ -453,9 +462,13 @@ Tres cosas que sí quedaron claras y no hay que deshacer:
   `null`. Con `null` no se toca el registro ni se sella `videoChk`. Es el mismo
   error que ya se cometió sellando `imageAt` a ciegas.
 - **Hace falta la página entera.** `fetchHead` de `lib.mjs` corta a los 16 KB y el
-  manifiesto vive pasados los 35 KB: con `fetchHead` saldrían todos muertos.
+  aviso de bloqueo puede quedar más allá.
 - **Despacio.** `CONCURRENCIA 2` y 700 ms de pausa. Con seis en paralelo y 80 ms
-  empezó a fallar a partir del registro 600.
+  ok.ru empezaba a limitar a partir del registro 600.
+- **Comprobar en el navegador, no sólo con `fetch`.** Las dos veces que el método
+  falló, abrir el vídeo en el navegador lo dejó claro en diez segundos: una decía
+  «bloqueado por derechos de autor» y las otras dos enseñaban su cartel y su
+  duración. Lo que `fetch` ve es un trozo de la verdad.
 
 ### El reproductor: un fallo real y mucho ruido alrededor
 
